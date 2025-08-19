@@ -2,9 +2,16 @@
 
 set -eu
 
+# expects an argument: filename with the tsv (tab separated values) file listing the schedules
+filename=$1
+
 # expected env vars:
 # - ACCOUNT_NAME: foundry keystore wallet account
 # - RPC_URL: base mainnet RPC
+# - MODE (optional): SIMULATE (default), TESTING, EXECUTE.
+#        in TESTING mode, env var ADMIN_ADDR must be set
+
+MODE=${MODE:-"SIMULATE"}
 
 # check chain id of 
 chainId=$(cast chain-id --rpc-url "$RPC_URL")
@@ -21,7 +28,8 @@ DEFAULT_CLIFFDATE=1771074000
 DEFAULT_ENDDATE=1834146000
 
 # Skip header
-tail -n +2 schedules.csv | while IFS=, read -r type recipient tokens; do
+row=1
+tail -n +2 $filename | while IFS=$'\t' read -r type recipient tokens category cliffonly; do
   # Clean inputs
   type=$(echo "$type" | tr -d ' "\r')
   recipient=$(echo "$recipient" | tr -d ' "\r')
@@ -35,12 +43,15 @@ tail -n +2 schedules.csv | while IFS=, read -r type recipient tokens; do
     index=0
   elif [ "$type" == "2" ]; then
     index=1
+  elif [ "$type" == "3" ]; then
+    index=2
   else
     echo "Error: Invalid type $type for $recipient"
-    continue
+    exit 1
+    #continue
   fi
 
-  echo "==== PROCESSING $recipient ===="
+  echo "==== PROCESSING #$row: $recipient ===="
 
   # Resolve ENS if recipient ends with .eth
   recipientAddr=$recipient
@@ -71,8 +82,14 @@ tail -n +2 schedules.csv | while IFS=, read -r type recipient tokens; do
   # Generate cast command
   echo "cast send --rpc-url $RPC_URL --account $ACCOUNT_NAME $FACTORY $calldata"
 
-  # if env var DO_EXECUTE is set, execute the command
-  if [ -n "${DO_EXECUTE:-}" ]; then
+  if [ "$MODE" == "EXECUTE" ]; then
     cast send --rpc-url "$RPC_URL" --account "$ACCOUNT_NAME" "$FACTORY" "$calldata"
+  elif [ "$MODE" == "TESTING" ]; then
+    cast send --quiet --rpc-url "$RPC_URL" --from $ADMIN_ADDR --unlocked "$FACTORY" "$calldata"
+  else
+    echo "SIMULATING: skipping execution"
   fi
+
+  # Increment row counter at the end of the loop
+  ((row++))
 done 
