@@ -132,6 +132,8 @@ contract SupVestingForkTest is Test {
         vm.startPrank(_admin);
         _supVestingFactory.setAdmin(_treasury);
         vm.stopPrank();
+
+        assertEq(_supVestingFactory.admin(), _treasury, "admin should be treasury");
         
         // Define an array of test data with randomly selected entries from schedules.csv
         VestingTestData[] memory testData = _getTestData();
@@ -139,6 +141,8 @@ contract SupVestingForkTest is Test {
         // Loop through each test data entry and verify the vesting schedule
         for (uint i = 0; i < testData.length; i++) {
             console.log("Verifying recipient", testData[i].recipient);
+
+            uint256 recipientBalanceBefore = _sup.balanceOf(testData[i].recipient);
             
             ISupVesting recipientContract = ISupVesting(_supVestingFactory.supVestings(
                 testData[i].recipient, 
@@ -181,29 +185,45 @@ contract SupVestingForkTest is Test {
             vm.warp(cliffDate + 1);
 
             // execute the cliff and flow (permissionless, done by automation in prod)
-            assertEq(_vestingScheduler.executeCliffAndFlow(_sup, vestingContractAddr, recipient), true, "cliff and flow should return true");
+            assertEq(_vestingScheduler.executeCliffAndFlow(_sup, vestingContractAddr, recipient), true, "executeCliffAndFlow should return true");
 
-            // verify admin is now 0
-            assertEq(_supVestingFactory.admin(), _treasury, "admin should be treasury");
+            // proceed with emergency withdraw for 50% of the vesting schedules
+            bool doEmergencyWithdraw = i % 2 == 0;
 
-            // verify that the admin doesn't have privileges anymore
-            vm.startPrank(_admin);
-            vm.expectRevert(ISupVesting.FORBIDDEN.selector);
-            ISupVesting(vestingContractAddr).emergencyWithdraw();
-            vm.stopPrank();
+            if (doEmergencyWithdraw) { // emergency withdraw
+                console.log("emergency withdraw");
 
-            // but treasury can still emergency withdraw
-            uint256 vestingContractBalanceBefore = _sup.balanceOf(vestingContractAddr);
-            uint256 treasuryBalanceBefore = _sup.balanceOf(_treasury);
-            vm.startPrank(_treasury);
-            ISupVesting(vestingContractAddr).emergencyWithdraw();
-            vm.stopPrank();
-            uint256 vestingContractBalanceAfter = _sup.balanceOf(vestingContractAddr);
-            assertEq(vestingContractBalanceAfter, 0, "vesting contract balance should be 0 after emergency withdraw");
-            uint256 treasuryBalanceAfter = _sup.balanceOf(_treasury);
-            // ensure that the treasury received the remaining amount (Ge because the redeemed flow deposit is missing in vestingContractBalanceBefore)
-            assertGe(treasuryBalanceAfter, treasuryBalanceBefore + vestingContractBalanceBefore, "treasury balance should be increased by remaining amount");
-            
+                // verify that the previous admin doesn't have privileges anymore
+                vm.startPrank(_admin);
+                vm.expectRevert(ISupVesting.FORBIDDEN.selector);
+                ISupVesting(vestingContractAddr).emergencyWithdraw();
+                vm.stopPrank();
+
+                // but treasury can still emergency withdraw
+                uint256 vestingContractBalanceBefore = _sup.balanceOf(vestingContractAddr);
+                uint256 treasuryBalanceBefore = _sup.balanceOf(_treasury);
+                vm.startPrank(_treasury);
+                ISupVesting(vestingContractAddr).emergencyWithdraw();
+                vm.stopPrank();
+                uint256 vestingContractBalanceAfter = _sup.balanceOf(vestingContractAddr);
+                assertEq(vestingContractBalanceAfter, 0, "vesting contract balance should be 0 after emergency withdraw");
+                uint256 treasuryBalanceAfter = _sup.balanceOf(_treasury);
+                // ensure that the treasury received the remaining amount (Ge because the redeemed flow deposit is missing in vestingContractBalanceBefore)
+                assertGe(treasuryBalanceAfter, treasuryBalanceBefore + vestingContractBalanceBefore, "treasury balance should be increased by remaining amount");
+            } else {
+                console.log("end vesting");
+                // fast forward to the end date minus 1 day, and execute end vesting
+                vm.warp(endDate - 1 days);
+                
+                assertEq(_vestingScheduler.executeEndVesting(_sup, vestingContractAddr, recipient), true, "executeEndVesting should return true");
+
+                // verify that the vesting contract balance is 0
+                assertEq(_sup.balanceOf(vestingContractAddr), 0, "vesting contract balance should be 0 after end vesting");
+
+                // verify that the recipient has the full amount
+                assertEq(_sup.balanceOf(recipient), recipientBalanceBefore + vestingAmount, "recipient balance should be the full amount");
+            }
+
             // Reset state for next test
             vm.warp(block.timestamp - 1); // Go back in time before cliff date
         }
