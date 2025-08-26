@@ -35,7 +35,7 @@ contract SupVestingForkTest is Test {
     uint32 internal constant _END_DATE = 1834146000;
 
     // NOTE: To be updated if the input data changes
-    uint256 internal constant _TOTAL_SUPPLY = 317782190 ether;
+    uint256 internal constant _TOTAL_SUPPLY = 317709052 ether;
 
     function setUp() public {
         _sup = ISuperToken(0xa69f80524381275A7fFdb3AE01c54150644c8792);
@@ -108,7 +108,7 @@ contract SupVestingForkTest is Test {
             vestingAmount: 81183511 ether
         });
         
-        // Entry 7 (from row 60) - Type 1, 0x84A1C94DE422cd1a8dC6D8cb819f57403fB93D58, 31,382,979
+        // Entry 7 (from row 59) - Type 1, 0x84A1C94DE422cd1a8dC6D8cb819f57403fB93D58, 31,382,979
         testData[6] = VestingTestData({
             recipient: 0x84A1C94DE422cd1a8dC6D8cb819f57403fB93D58,
             vestingIndex: 0, // Type 1 = vestingIndex 0
