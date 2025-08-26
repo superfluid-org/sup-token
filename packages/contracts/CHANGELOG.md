@@ -2,7 +2,7 @@
 
 All notable changes to the Superfluid SPR contracts will be documented in this file.
 
-## [v1.0.1]
+## [v1.0.1] - 2025-08-26
 
 ### Added
 
