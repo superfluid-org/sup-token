@@ -15,7 +15,21 @@ SUP_VESTING_FACTORY_ADDR="0x3DF8A6558073e973f4c3979138Cca836C993E285"
 SUP_ADDR="0xa69f80524381275A7fFdb3AE01c54150644c8792"
 # 500 M
 APPROVAL_AMOUNT="500000000000000000000000000"
-SCHEDULES_FILE=${SCHEDULES_FILE:-"data/schedules.tsv"}
+SCHEDULES_FILE=${SCHEDULES_FILE:-"data/schedules_1.tsv"}
+
+# Check if file exists and ends with a newline
+if [ -f "$SCHEDULES_FILE" ]; then
+  if [ "$(tail -c1 "$SCHEDULES_FILE" | wc -l)" -eq 0 ]; then
+    echo "ERROR: $SCHEDULES_FILE does not end with a newline. This will cause the last line to be ignored."
+    echo "Please add a newline at the end of the file"
+    exit 1
+  fi
+else
+  echo "ERROR: $SCHEDULES_FILE not found"
+  exit 1
+fi
+
+echo "using SCHEDULES_FILE: $SCHEDULES_FILE"
 
 # Cleanup function
 cleanup() {
