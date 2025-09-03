@@ -255,10 +255,10 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.connectToPool(PROGRAM_0);
+        aliceLocker.connect(PROGRAM_0);
 
         vm.prank(ALICE);
-        aliceLocker.connectToPool(PROGRAM_0);
+        aliceLocker.connect(PROGRAM_0);
 
         assertEq(
             _fluid.balanceOf(address(aliceLocker)),
@@ -284,15 +284,131 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.disconnectFromPool(PROGRAM_0);
+        aliceLocker.disconnect(PROGRAM_0);
 
         vm.prank(ALICE);
-        aliceLocker.disconnectFromPool(PROGRAM_0);
+        aliceLocker.disconnect(PROGRAM_0);
 
         assertEq(
             _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
             false,
             "Locker should be disconnected from pool"
+        );
+    }
+
+    function testDisconnectFromPools(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce0 = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature0 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce0);
+        uint256 nonce1 = _programManager.getNextValidNonce(PROGRAM_1, ALICE);
+        bytes memory signature1 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_1, nonce1);
+
+        vm.prank(ALICE);
+        aliceLocker.claim(PROGRAM_0, units, nonce0, signature0);
+        aliceLocker.claim(PROGRAM_1, units, nonce1, signature1);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        uint256[] memory programIds = new uint256[](2);
+        programIds[0] = PROGRAM_0;
+        programIds[1] = PROGRAM_1;
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.disconnect(programIds);
+
+        vm.prank(ALICE);
+        aliceLocker.disconnect(programIds);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+    }
+
+    function testDisconnectAndClaim(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce0 = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature0 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce0);
+        uint256 nonce1 = _programManager.getNextValidNonce(PROGRAM_1, ALICE);
+        bytes memory signature1 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_1, nonce1);
+        uint256 nonce2 = _programManager.getNextValidNonce(PROGRAM_2, ALICE);
+        bytes memory signature2 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_2, nonce2);
+
+        vm.prank(ALICE);
+        aliceLocker.claim(PROGRAM_0, units, nonce0, signature0);
+        aliceLocker.claim(PROGRAM_1, units, nonce1, signature1);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[2]), address(aliceLocker)),
+            false,
+            "Locker should be not be connected to pool"
+        );
+
+        uint256[] memory programIdsToDisconnect = new uint256[](2);
+        programIdsToDisconnect[0] = PROGRAM_0;
+        programIdsToDisconnect[1] = PROGRAM_1;
+
+        uint256[] memory programIdsToClaim = new uint256[](1);
+        programIdsToClaim[0] = PROGRAM_2;
+
+        uint256[] memory totalProgramUnits = new uint256[](1);
+        totalProgramUnits[0] = units;
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.disconnectAndClaim(programIdsToDisconnect, programIdsToClaim, totalProgramUnits, nonce2, signature2);
+
+        vm.prank(ALICE);
+        aliceLocker.disconnectAndClaim(programIdsToDisconnect, programIdsToClaim, totalProgramUnits, nonce2, signature2);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[2]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
         );
     }
 

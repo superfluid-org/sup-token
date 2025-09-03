@@ -262,18 +262,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         external
         nonReentrant
     {
-        // Get the corresponding program pool
-        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
-
-        if (!FLUID.isMemberConnected(address(programPool), address(this))) {
-            // Connect this locker to the Program Pool
-            FLUID.connectPool(programPool);
-        }
-
-        // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
-
-        emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
+        _claim(programId, totalProgramUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IFluidLocker
@@ -283,20 +272,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 nonce,
         bytes memory stackSignature
     ) external nonReentrant {
-        for (uint256 i = 0; i < programIds.length; ++i) {
-            // Get the corresponding program pool
-            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
-
-            if (!FLUID.isMemberConnected(address(programPool), address(this))) {
-                // Connect this locker to the Program Pool
-                FLUID.connectPool(programPool);
-            }
-        }
-
-        // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
-
-        emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
+        _claimBatch(programIds, totalProgramUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IFluidLocker
@@ -400,7 +376,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function connectToPool(uint256 programId) external nonReentrant onlyLockerOwner {
+    function connect(uint256 programId) external nonReentrant onlyLockerOwner {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
@@ -411,13 +387,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function disconnectFromPool(uint256 programId) external nonReentrant onlyLockerOwner {
-        // Get the corresponding program pool
-        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+    function disconnect(uint256 programId) external nonReentrant onlyLockerOwner {
+        _disconnectFromPool(programId);
+    }
 
-        if (FLUID.isMemberConnected(address(programPool), address(this))) {
-            // Connect this locker to the Program Pool
-            FLUID.disconnectPool(programPool);
+    /// @inheritdoc IFluidLocker
+    function disconnect(uint256[] memory programIds) external nonReentrant onlyLockerOwner {
+        for (uint256 i; i < programIds.length; ++i) {
+            _disconnectFromPool(programIds[i]);
         }
     }
 
@@ -527,6 +504,18 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function withdrawDustETH() external onlyLockerOwner {
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+    function disconnectAndClaim(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external nonReentrant onlyLockerOwner {
+        for (uint256 i; i < programIdsToDisconnect.length; ++i) {
+            _disconnectFromPool(programIdsToDisconnect[i]);
+        }
+
+        _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
     }
 
     //   _    ___                 ______                 __  _
@@ -601,6 +590,51 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function _connectToPool(uint256 programId) internal {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        if (!FLUID.isMemberConnected(address(programPool), address(this))) {
+            // Connect this locker to the Program Pool
+            FLUID.connectPool(programPool);
+        }
+    }
+
+    function _claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+        internal
+    {
+        _connectToPool(programId);
+
+        // Request program manager to update this locker's units
+        EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
+
+        emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
+    }
+
+    function _claimBatch(
+        uint256[] memory programIds,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) internal {
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            _connectToPool(programIds[i]);
+        }
+
+        // Request program manager to update this locker's units
+        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
+
+        emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
+    }
+
+    function _disconnectFromPool(uint256 programId) internal {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        // Disconnect this locker from the Program Pool
+        FLUID.disconnectPool(programPool);
+    }
 
     function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
         // Calculate instant unlock penalty amount

@@ -34,43 +34,89 @@ contract SupVestingFactoryTest is SFTest {
         vm.warp(block.timestamp + 420 days);
     }
 
-    function testCreateSupVestingContract(address nonAdmin, address recipient, uint256 amount, uint256 cliffAmount)
-        public
-    {
+    function testCreateSupVestingContract(
+        address nonAdmin,
+        uint256 recipientNbVesting,
+        address recipient,
+        uint256 amount,
+        uint256 cliffAmount
+    ) public {
         vm.assume(nonAdmin != address(ADMIN));
         vm.assume(recipient != address(0));
         amount = bound(amount, 1 ether, 1_000_000 ether);
         cliffAmount = bound(cliffAmount, 1, amount - 0.1 ether);
 
+        recipientNbVesting = bound(recipientNbVesting, 1, 3);
+
         uint32 cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
 
         vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.approve(address(supVestingFactory), amount);
+        _fluidSuperToken.approve(address(supVestingFactory), amount * recipientNbVesting);
 
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, 0, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
-        vm.prank(ADMIN);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        for (uint256 i = 0; i < recipientNbVesting; ++i) {
+            vm.prank(ADMIN);
+            supVestingFactory.createSupVestingContract(
+                recipient, i, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
 
-        address newSupVestingContract = supVestingFactory.supVestings(recipient);
+            address newSupVestingContract = supVestingFactory.supVestings(recipient, i);
 
-        assertNotEq(newSupVestingContract, address(0), "New sup vesting contract should be created");
-        assertEq(supVestingFactory.balanceOf(recipient), amount, "Balance should be updated");
-        assertEq(supVestingFactory.totalSupply(), supplyBefore + amount, "Total supply should be updated");
+            assertNotEq(newSupVestingContract, address(0), "New sup vesting contract should be created");
+            assertEq(supVestingFactory.balanceOf(recipient), amount * (i + 1), "Balance should be updated");
+            assertEq(supVestingFactory.totalSupply(), supplyBefore + amount * (i + 1), "Total supply should be updated");
 
-        vm.prank(ADMIN);
-        vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+            // if (i > 0) {
+            //     vm.prank(ADMIN);
+            //     vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
+            //     supVestingFactory.createSupVestingContract(
+            //         recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            //     );
+            // }
+        }
+    }
+
+    function testCreateSupVestingContract_invalidIndex(
+        uint256 recipientNbVesting,
+        uint256 randomIndex,
+        address recipient,
+        uint256 amount,
+        uint256 cliffAmount
+    ) public {
+        amount = bound(amount, 1 ether, 1_000_000 ether);
+        cliffAmount = bound(cliffAmount, 1, amount - 0.1 ether);
+        recipientNbVesting = bound(recipientNbVesting, 2, 10);
+        randomIndex = bound(randomIndex, 1, 1000);
+
+        uint32 cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), amount * recipientNbVesting);
+
+        vm.startPrank(ADMIN);
+        for (uint256 i = 0; i < recipientNbVesting; ++i) {
+            vm.expectRevert(ISupVestingFactory.VESTING_DUPLICATED.selector);
+            supVestingFactory.createSupVestingContract(
+                recipient,
+                i + randomIndex,
+                amount,
+                cliffAmount,
+                cliffDate,
+                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
+
+            supVestingFactory.createSupVestingContract(
+                recipient, i, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
+        }
+        vm.stopPrank();
     }
 
     function testSetTreasury(address newTreasury, address nonTreasury) public {

@@ -121,9 +121,12 @@ contract SupVesting is ISupVesting {
         // Close the flow between this contract and the recipient
         SUP.flow(RECIPIENT, 0);
 
-        // Delete the vesting schedule
-        VESTING_SCHEDULER.deleteVestingSchedule(SUP, RECIPIENT, bytes(""));
-
+        IVestingSchedulerV2.VestingSchedule memory vs =
+            VESTING_SCHEDULER.getVestingSchedule(address(SUP), address(this), RECIPIENT);
+        if (vs.endDate != 0) {
+            // Delete the vesting schedule if it is not already deleted
+            VESTING_SCHEDULER.deleteVestingSchedule(SUP, RECIPIENT, bytes(""));
+        }
         // Fetch the remaining balance of the vesting contract
         uint256 remainingBalance = SUP.balanceOf(address(this));
 

@@ -204,11 +204,11 @@ interface IFluidLocker {
     function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
 
     /**
-     * @notice Helper function to help the Locker connect to a program pool
+     * @notice Helper function which connects the Locker to a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
      */
-    function connectToPool(uint256 programId) external;
+    function connect(uint256 programId) external;
 
     /**
      * @notice Withdraws dust ETH from the locker
@@ -218,10 +218,35 @@ interface IFluidLocker {
 
     /**
      * @notice Helper function to help the Locker disconnect from a program pool
+     * @notice Helper function which disconnects the Locker from a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
      */
-    function disconnectFromPool(uint256 programId) external;
+    function disconnect(uint256 programId) external;
+
+    /**
+     * @notice Helper function which disconnects the Locker from multiple program pools
+     * @dev Only this Locker owner can call this function
+     * @param programIds array of program identifiers corresponding to the pools to disconnect from
+     */
+    function disconnect(uint256[] memory programIds) external;
+
+    /**
+     * @notice Helper function which combines batched disconnectFromPool and claim into one call.
+     * @dev Only this Locker owner can call this function
+     * @param programIdsToDisconnect array of program identifiers corresponding to the pools to disconnect from
+     * @param programIdsToClaim array of program identifiers corresponding to the pools to claim units from
+     * @param totalProgramUnits array of total program units to claim
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
+     */
+    function disconnectAndClaim(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

@@ -84,7 +84,7 @@ contract SupVestingFactory is ISupVestingFactory {
     address public admin;
 
     /// @notice Mapping of recipient addresses to their corresponding SUP Token Vesting contracts
-    mapping(address recipient => address supVesting) public supVestings;
+    mapping(address recipient => address[] supVesting) public supVestings;
 
     /// @notice List of recipient addresses
     address[] public recipients;
@@ -127,18 +127,22 @@ contract SupVestingFactory is ISupVestingFactory {
     /// @inheritdoc ISupVestingFactory
     function createSupVestingContract(
         address recipient,
+        uint256 recipientVestingIndex,
         uint256 amount,
         uint256 cliffAmount,
         uint32 cliffDate,
         uint32 endDate
     ) external onlyAdmin returns (address newSupVestingContract) {
         if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
-        if (cliffAmount >= amount) revert FORBIDDEN();
+        if (!(cliffAmount < amount)) revert FORBIDDEN();
+        if (supVestings[recipient].length != recipientVestingIndex) {
+            revert VESTING_DUPLICATED();
+        }
 
-        // Ensure the recipient address does not already have a vesting contract
-        if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
-
-        recipients.push(recipient);
+        // If it is the first schedule for this recipient, add the recipient to the array
+        if (recipientVestingIndex == 0) {
+            recipients.push(recipient);
+        }
 
         uint256 vestingDuration = endDate - cliffDate;
 
@@ -153,7 +157,7 @@ contract SupVestingFactory is ISupVestingFactory {
             address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
 
         // Maps the recipient address to the new SUP Token Vesting contract
-        supVestings[recipient] = newSupVestingContract;
+        supVestings[recipient].push(newSupVestingContract);
 
         // Transfer the tokens from the treasury to the new vesting contract
         SUP.transferFrom(treasury, newSupVestingContract, amount);
@@ -185,16 +189,19 @@ contract SupVestingFactory is ISupVestingFactory {
 
     /// @inheritdoc ISupVestingFactory
     function balanceOf(address vestingReceiver) public view returns (uint256 unvestedBalance) {
-        // Get the flow buffer amount
-        (,, uint256 deposit,) = SUP.getFlowInfo(supVestings[vestingReceiver], vestingReceiver);
+        for (uint256 i; i < supVestings[vestingReceiver].length; ++i) {
+            // Get the flow buffer amount
+            (,, uint256 deposit,) = SUP.getFlowInfo(supVestings[vestingReceiver][i], vestingReceiver);
 
-        unvestedBalance = SUP.balanceOf(supVestings[vestingReceiver]) + deposit;
+            unvestedBalance += SUP.balanceOf(supVestings[vestingReceiver][i]) + deposit;
+        }
     }
 
+    /// @inheritdoc ISupVestingFactory
     function totalSupply() external view returns (uint256 supply) {
         uint256 length = recipients.length;
 
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             supply += balanceOf(recipients[i]);
         }
     }
