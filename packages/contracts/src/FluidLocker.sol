@@ -504,6 +504,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function withdrawDustETH() external onlyLockerOwner {
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+    }
+
+    /// @inheritdoc IFluidLocker
     function disconnectAndClaim(
         uint256[] memory programIdsToDisconnect,
         uint256[] memory programIdsToClaim,
