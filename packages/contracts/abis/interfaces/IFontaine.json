@@ -1,0 +1,52 @@
+[
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "unlockRecipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "unlockFlowRate",
+        "type": "int96",
+        "internalType": "int96"
+      },
+      {
+        "name": "unlockPeriod",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "terminateUnlock",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "error",
+    "name": "CANNOT_UNLOCK_TO_SUPERAPP",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_CONNECTED_LOCKER",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NO_ACTIVE_UNLOCK",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TOO_EARLY_TO_TERMINATE_UNLOCK",
+    "inputs": []
+  }
+]
