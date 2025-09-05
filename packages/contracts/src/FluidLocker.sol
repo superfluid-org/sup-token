@@ -431,7 +431,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         activePositionCount++;
 
-        /// FIXME : add event emit here
+        // Emit the Liquidity Position Created event
+        emit LiquidityPositionCreated(positionTokenId);
     }
 
     /// @inheritdoc IFluidLocker
@@ -477,6 +478,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             delete taxFreeExitTimestamps[tokenId];
             activePositionCount--;
             NONFUNGIBLE_POSITION_MANAGER.burn(tokenId);
+            emit LiquidityPositionBurned(tokenId);
         }
     }
 

@@ -59,6 +59,12 @@ interface IFluidLocker {
     /// @notice Event emitted when $FLUID are unstaked
     event FluidUnstaked();
 
+    /// @notice Event emitted when a liquidity position is created
+    event LiquidityPositionCreated(uint256 indexed tokenId);
+
+    /// @notice Event emitted when a liquidity position is burned
+    event LiquidityPositionBurned(uint256 indexed tokenId);
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
