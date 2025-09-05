@@ -28,8 +28,8 @@ The SPR SUP Reserve System consists of several key components:
 - **Reward Programs**: Participate in ecosystem partner programs
 - **Liquidity Provision**: Provide liquidity to earn rewards & trading fees
 - **Staking**: Earn rewards by staking SUP tokens
-- **Vest Withdrawing**: Withdraw tokens over time with reduced penalties
-- **Instant Withdrawing**: Withdraw tokens instantly with high penalty
+- **Streaming**: Withdraw tokens over time with reduced community charge
+- **Draining**: Withdraw tokens instantly with high community charge
 - **Token Locking**: Get yield from your SUP tokens
 
 ## Getting Started
@@ -63,37 +63,23 @@ The system supports ecosystem partner programs where you can earn SUP tokens.
 You can participate in the currently live campaigns on [Superfluid Claim App](https://claim.superfluid.org).
 As your participation in the campaigns increases, you are entitled to claim a higher SUP flow rate by claiming it daily.
 
-### Withdrawing SUP Tokens
+### Withdrawing SUP Tokens from the Reserve
 
 You can withdraw your SUP tokens in two ways:
 
-#### 1. Instant Withdraw (High Penalty)
+#### 1. Drain (High Community Charge)
 
-You can withdraw your SUP tokens instantly. Chosing this option will allow you to get your SUP tokens instantly to your wallet, however you will have to pay a high penalty.
+You can withdraw your SUP tokens instantly. Chosing this option will allow you to get your SUP tokens instantly to your wallet, however you will have to pay a high community charge.
 
-**Penalty**: 80% of the withdrawn amount goes to stakers and liquidity providers
+**Community Charge**: 80% of the withdrawn amount goes to stakers and liquidity providers
 
-#### 2. Vest Withdraw (Reduced Penalty)
+#### 2. Stream (No Community Charge)
 
-You can withdraw your SUP tokens gradually. Chosing this option will allow you to get your SUP tokens streamed to your wallet over the period of your choice. You will be subject to penalty based on the duration of the chosen withdraw period.
-
-**Penalty Calculation**:
-
-- Minimum Withdraw Period: 7 days
-- Maximum Withdraw Period: 365 days
-- Penalty decreases with longer withdraw periods
-
-**Example Penalties**:
-
-- 7 days: ~70% penalty
-- 30 days: ~60% penalty
-- 90 days: ~40% penalty
-- 180 days: ~25% penalty
-- 365 days: 0% penalty
+You can withdraw your SUP tokens gradually. Chosing this option will allow you to get your SUP tokens streamed to your wallet over 12 months.
 
 ### Staking
 
-Staking allows you to earn rewards from the penalties collected when other users withdraw their tokens.
+Staking allows you to earn rewards from the community charges collected when other users withdraw their tokens.
 
 #### How to Stake
 
@@ -101,26 +87,27 @@ Staking allows you to earn rewards from the penalties collected when other users
 
 - You must have available SUP tokens in your Reserve
 
-**Note**: After staking, there's a 7-days cooldown before you can unstake
-**Note**: The 7-days cooldown period is reset at every staking event
+**Note**: After staking, there's a 30-days Minimum Staking Period before you can unstake
+**Note**: The 30-days Minimum Staking Period is reset at every staking event
+**Note**: As staked SUP remain in your Reserve, delegation power is unchanged
 
 #### How to Unstake
 
 **Requirements**:
 
-- 7-day cooldown period must have elapsed
+- 30-day cooldown period must have elapsed
 
 #### How to Claim Staking Rewards
 
-Staking rewards are streamed directly to your Reserve. You do not have to claim them, however, you may have to stake them to increase your share of the rewards.
+Staking rewards are accrued directly to your Reserve. You do not have to claim them, however, you may have to stake them to increase your share of the rewards.
 
 ### Liquidity Provision
 
-You can provide liquidity to the ETH/SUP Uniswap V3 pool to earn trading fees and a share of the penalties collected when other users withdraw their tokens.
+You can provide liquidity to the ETH/SUP Uniswap V3 pool to earn trading fees and a share of the community charge collected when other users withdraw their tokens.
 
 #### How to Provide Liquidity
 
-You can provide liquidity by sender ETH to your Reserve and calling the provide liquidity function.
+You can provide liquidity by sending ETH to your Reserve and calling the provide liquidity function.
 Every time you provide liquidity a new Uniswap V3 position is created. The corresponding NFT is stored in your Reserve.
 
 **Requirements**:
@@ -145,7 +132,7 @@ You can withdraw your Reserve's Uniswap V3 position either partially or fully.
 
 ##### Community Charge-Free Withdrawals (Liquidity Provision)
 
-After providing liquidity for 180 days, you can withdraw your position and get your SUP (and ETH) tokens directly to your wallet without paying the Reserve Community Charge.
+After providing liquidity for 180 days, you can withdraw your position and get both your SUP and ETH tokens directly to your wallet without paying the Reserve Community Charge.
 
 ###### How Community Charge-Free Withdrawals Work
 
@@ -153,7 +140,7 @@ When you provide liquidity to the ETH/SUP Uniswap V3 pool through your Reserve, 
 
 **Key Benefits:**
 
-- **No Penalty**: Withdraw your SUP tokens without paying the usual Community Charge
+- **No Community Charge**: Withdraw your SUP tokens without paying the usual Community Charge
 - **Full Value**: Get the complete value of your position without deductions
 - **Reward Retention**: Keep all accumulated trading fees and rewards
 
@@ -175,7 +162,7 @@ When you provide liquidity to the ETH/SUP Uniswap V3 pool through your Reserve, 
 1. **Day 0**: Provide liquidity to ETH/SUP pool
 2. **Day 1-179**: Collect trading fees, position not eligible for Community Charge-free withdrawal
 3. **Day 180+**: Position becomes eligible for Community Charge-free withdrawal
-4. **Any time after Day 180**: Withdraw your SUP tokens directly to your wallet without penalties
+4. **Any time after Day 180**: Withdraw your SUP tokens directly to your wallet without paying the Community Charge
 
 ## Token Management
 
@@ -185,7 +172,7 @@ Your available balance is the amount of SUP tokens you can use for:
 
 - Staking
 - Providing liquidity
-- Withdrawing
+- Withdrawing from the reserve (Drain or Stream)
 
 ### Staked Balance
 
@@ -202,19 +189,19 @@ Your liquidity balance represents the size of all your Reserves' liquidity posit
 - Only you can control your Reserve
 - All operations on your Reserve require your signature
 
-### Fees and Penalties
+### Fees and Community Charge
 
 - **Reserve Creation**: One-time fee set by governance
-- **Instant Withdraw**: 80% penalty
-- **Gradual Withdraw**: Variable penalty based on duration
+- **Draining**: 80% community charge
+- **Streaming**: Variable community charge based on duration
 
 ### Limitations
 
 - **Minimum Withdraw Amount**: 10 SUP tokens
-- **Minimum Withdraw Period**: 7 days
-- **Maximum Withdraw Period**: 365 days
-- **Unstaking Cooldown**: 7 days after last staking event
-- **Liquidity Provision Withdrawal**: 7 days after providing liquidity
+- **Stream Period**: 365 days
+- **Minimum Staking Period**: 30 days after last staking event
+- **Liquidity Provision Cooldown**: 7 days after providing liquidity
+- **Liquidity Provision Community Charge-free withdrawal**: 180 days after providing liquidity
 
 ---
 
