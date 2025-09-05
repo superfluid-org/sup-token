@@ -35,7 +35,7 @@ contract SupVestingForkTest is Test {
     uint32 internal constant _END_DATE = 1834531200;
 
     // NOTE: To be updated if the input data changes
-    uint256 internal constant _TOTAL_SUPPLY = 317709052 ether;
+    uint256 internal constant _TOTAL_SUPPLY = 317709052 ether + 56597041 ether;
 
     function setUp() public {
         _sup = ISuperToken(0xa69f80524381275A7fFdb3AE01c54150644c8792);
@@ -64,55 +64,13 @@ contract SupVestingForkTest is Test {
 
     // NOTE: To be updated if the input data changes
     function _getTestData() internal pure returns (VestingTestData[] memory) {
-        VestingTestData[] memory testData = new VestingTestData[](7);
+        VestingTestData[] memory testData = new VestingTestData[](1);
         
-        // Entry 1 (from row 2) - Type 1, 0xfd2A175CFAa14344a0e896179765f6d83F7c1977, 411,061
+        // Entry 2 (from row 3) - Type 1, 0x395605F350C448C3e5102213022C3E976140ed25, 1,662,234
         testData[0] = VestingTestData({
-            recipient: 0xfd2A175CFAa14344a0e896179765f6d83F7c1977,
+            recipient: 0x395605F350C448C3e5102213022C3E976140ed25,
             vestingIndex: 0, // Type 1 = vestingIndex 0
-            vestingAmount: 411061 ether
-        });
-        
-        // Entry 2 (from row 3) - Type 2, 0xfd2A175CFAa14344a0e896179765f6d83F7c1977, 1,783,088
-        testData[1] = VestingTestData({
-            recipient: 0xfd2A175CFAa14344a0e896179765f6d83F7c1977,
-            vestingIndex: 1, // Type 2 = vestingIndex 1
-            vestingAmount: 1783088 ether
-        });
-        
-        // Entry 3 (from row 12) - Type 3, 0x24F2C443642649869acBa5c1A9CEA27b04Ba004E, 365,691
-        testData[2] = VestingTestData({
-            recipient: 0x24F2C443642649869acBa5c1A9CEA27b04Ba004E,
-            vestingIndex: 2, // Type 3 = vestingIndex 2
-            vestingAmount: 365691 ether
-        });
-        
-        // Entry 4 (from row 26) - Type 1, 0x97A8131e4d571431E937d8712Ab67Ac83EE02c2D, 5,265,957
-        testData[3] = VestingTestData({
-            recipient: 0x97A8131e4d571431E937d8712Ab67Ac83EE02c2D,
-            vestingIndex: 0, // Type 1 = vestingIndex 0
-            vestingAmount: 5265957 ether
-        });
-        
-        // Entry 5 (from row 29) - Type 2, 0x16e5AD2F9697Caf4B0F0deB25FF1121a01cBD2c7, 5,920,179
-        testData[4] = VestingTestData({
-            recipient: 0x16e5AD2F9697Caf4B0F0deB25FF1121a01cBD2c7,
-            vestingIndex: 1, // Type 2 = vestingIndex 1
-            vestingAmount: 5920179 ether
-        });
-        
-        // Entry 6 (from row 37) - Type 1, 0xA6c49067919D92d5DB655AF190111D480Ee1B9A4, 81,183,511
-        testData[5] = VestingTestData({
-            recipient: 0xA6c49067919D92d5DB655AF190111D480Ee1B9A4,
-            vestingIndex: 0, // Type 1 = vestingIndex 0
-            vestingAmount: 81183511 ether
-        });
-        
-        // Entry 7 (from row 59) - Type 1, 0x84A1C94DE422cd1a8dC6D8cb819f57403fB93D58, 31,382,979
-        testData[6] = VestingTestData({
-            recipient: 0x84A1C94DE422cd1a8dC6D8cb819f57403fB93D58,
-            vestingIndex: 0, // Type 1 = vestingIndex 0
-            vestingAmount: 31382979 ether
+            vestingAmount: 1662234 ether
         });
         
         return testData;
@@ -127,13 +85,14 @@ contract SupVestingForkTest is Test {
 
     function testVerifySchedulesCreatedByScript() public {
         console.log("verify schedules created by script");
+        address newAdmin = makeAddr("newAdmin");
 
-        // hand over admin to the treasury
+        // hand over admin
         vm.startPrank(_admin);
-        _supVestingFactory.setAdmin(_treasury);
+        _supVestingFactory.setAdmin(newAdmin);
         vm.stopPrank();
 
-        assertEq(_supVestingFactory.admin(), _treasury, "admin should be treasury");
+        assertEq(_supVestingFactory.admin(), _treasury, "admin should be new admin");
         
         // Define an array of test data with randomly selected entries from schedules.csv
         VestingTestData[] memory testData = _getTestData();
