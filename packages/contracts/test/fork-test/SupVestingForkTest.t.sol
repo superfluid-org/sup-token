@@ -31,8 +31,8 @@ contract SupVestingForkTest is Test {
     address internal _treasury;
 
     address internal constant _ALICE = address(0x1);
-    uint32 internal constant _CLIFF_DATE = 1771074000;
-    uint32 internal constant _END_DATE = 1834146000;
+    uint32 internal constant _CLIFF_DATE = 1771459200;
+    uint32 internal constant _END_DATE = 1834531200;
 
     // NOTE: To be updated if the input data changes
     uint256 internal constant _TOTAL_SUPPLY = 317709052 ether;
