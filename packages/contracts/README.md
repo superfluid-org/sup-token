@@ -122,6 +122,19 @@ forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-
 
 - Execute script to create SupVesting contract for each insiders.
 
+Fork test:
+```
+RPC_URL=... SCHEDULES_FILE=data/schedules_x.tsv script/vesting/run-fork-verification.sh
+```
+
+Note: the fork testing script also simulates approval to the factory, thus won't tell you if step 2 is missing.
+It's about verifying that all transactions would succeed, with the final expected totalSupply of lockedSUP tokens.
+
+Execution:
+```
+MODE=EXECUTE ACCOUNT_NAME=... RPC_URL=... ../tasks/create-vestings.sh data/schedules_x.tsv
+```
+
 ### Step 4 :
 
 - Add each `SupVesting` contract address to the automation whitelist (offchain)
