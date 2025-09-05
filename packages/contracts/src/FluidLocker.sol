@@ -114,7 +114,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period
-    uint80 private constant _STAKING_COOLDOWN_PERIOD = 7 days;
+    uint80 private constant _STAKING_COOLDOWN_PERIOD = 30 days;
 
     /// @notice LP cooldown period
     uint80 private constant _LP_COOLDOWN_PERIOD = 7 days;
@@ -358,21 +358,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
 
-        // Enforce amount to unstake is not greater than the staked balance
-        if (amountToUnstake > _stakedBalance) {
-            revert INSUFFICIENT_STAKED_BALANCE();
-        }
-
-        // Update the staked balance
-        _stakedBalance -= amountToUnstake;
-
-        // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
-
-        // Disconnect this locker from the Tax Distribution Pool
-        FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
-
-        emit FluidUnstaked();
+        _unstake(amountToUnstake);
     }
 
     /// @inheritdoc IFluidLocker
@@ -412,9 +398,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
         _pump(weth, ethPumpAmount);
 
-        // Ensure that the locker has enough available balance to provide liquidity
-        if (getAvailableBalance() < supAmount) {
-            revert INSUFFICIENT_AVAILABLE_BALANCE();
+        uint256 availableBalance = getAvailableBalance();
+
+        // Check if the locker has enough available balance to provide desired liquidity
+        if (availableBalance < supAmount) {
+            uint256 shortage = supAmount - availableBalance;
+
+            // If not, check if the locker has enough staked balance to compensate for the shortage
+            if (_stakedBalance < shortage) {
+                revert INSUFFICIENT_AVAILABLE_BALANCE();
+            } else {
+                // Forcefully unstake the shortage amount to provide liquidity (discards the cooldown period)
+                _unstake(shortage);
+            }
         }
 
         // Get the amount of paired asset tokens in the locker
@@ -466,8 +462,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
-
-        // TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
             TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
@@ -631,6 +625,26 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
+    }
+
+    function _unstake(uint256 amountToUnstake) internal {
+        // Enforce amount to unstake is not greater than the staked balance
+        if (amountToUnstake > _stakedBalance) {
+            revert INSUFFICIENT_STAKED_BALANCE();
+        }
+
+        // Update the staked balance
+        _stakedBalance -= amountToUnstake;
+
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
+
+        if (_stakedBalance == 0) {
+            // Disconnect this locker from the Tax Distribution Pool
+            FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
+        }
+
+        emit FluidUnstaked();
     }
 
     function _disconnectFromPool(uint256 programId) internal {
