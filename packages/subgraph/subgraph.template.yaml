@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: FluidEPProgramManager
-    network: base-sepolia
+    network: {{network}}
     source:
       abi: FluidEPProgramManager
-      address: "0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706"
-      startBlock: 20496038
+      address: "{{FluidEPProgramManager.address}}"
+      startBlock: {{FluidEPProgramManager.startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -33,11 +33,11 @@ dataSources:
       file: ./src/fluid-ep-program-manager.ts
   - kind: ethereum
     name: FluidLockerFactory
-    network: base-sepolia
+    network: {{network}}
     source:
       abi: FluidLockerFactory
-      address: "0x897D343D24Ac5b84838B976Cf37036EDEfe3E967"
-      startBlock: 20496038
+      address: "{{FluidLockerFactory.address}}"
+      startBlock: {{FluidLockerFactory.startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -53,11 +53,11 @@ dataSources:
       file: ./src/fluid-locker-factory.ts
   - kind: ethereum
     name: StakingRewardController
-    network: base-sepolia
+    network: {{network}}
     source:
       abi: StakingRewardController
-      address: "0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018"
-      startBlock: 20496038
+      address: "{{StakingRewardController.address}}"
+      startBlock: {{StakingRewardController.startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -79,7 +79,7 @@ dataSources:
 templates:
   - kind: ethereum
     name: FluidLocker
-    network: base-sepolia
+    network: {{network}}
     source:
       abi: FluidLocker
     mapping:

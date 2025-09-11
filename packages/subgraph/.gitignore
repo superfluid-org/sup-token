@@ -2,6 +2,9 @@
 build/
 generated/
 
+# Generated subgraph config
+subgraph.yaml
+
 # Dependency directories
 node_modules/
 jspm_packages/

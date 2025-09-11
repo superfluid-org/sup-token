@@ -67,19 +67,11 @@ function getOrCreateStakingStats(): StakingStats {
     stats.lastUpdatedTimestamp = BigInt.zero();
     stats.lastUpdatedBlock = BigInt.zero();
     
-    // Initialize configuration fields with null/zero values
-    // These will be set by events or can be updated manually if needed
-    stats.stakerDistributionPool = null;
-    stats.lpDistributionPool = null;
+    // Initialize staking configuration fields with null values
+    // These will be set by events from StakingRewardController
     stats.taxDistributionPool = null;
-    stats.taxFreeWithdrawDelay = null;
-    stats.minUnlockAmount = null;
-    stats.unlockAvailable = false;
     stats.stakerAllocationBP = null;
-    stats.liquidityProviderAllocationBP = null;
     stats.currentStakerFlowRate = null;
-    stats.currentLPFlowRate = null;
-    stats.currentSubsidyFlowRate = null;
   }
   return stats;
 }

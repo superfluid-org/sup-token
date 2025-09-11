@@ -1,11 +1,19 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigInt, Address } from "@graphprotocol/graph-ts";
 import { LockerStaking, StakingStats } from "../generated/schema";
 import { 
   UpdatedStakersUnits as UpdatedStakersUnitsEvent,
   TaxAllocationUpdated as TaxAllocationUpdatedEvent,
   TaxDistributionFlowUpdated as TaxDistributionFlowUpdatedEvent,
-  SubsidyFlowRateUpdated as SubsidyFlowRateUpdatedEvent
+  StakingRewardController as StakingRewardControllerContract
 } from "../generated/StakingRewardController/StakingRewardController";
+
+// Helper function to populate tax distribution pool address from contract
+function populateTaxDistributionPool(stats: StakingStats, contractAddress: Address): void {
+  let contract = StakingRewardControllerContract.bind(contractAddress);
+  
+  // Fetch tax distribution pool address from contract
+  stats.taxDistributionPool = contract.taxDistributionPool();
+}
 
 // Helper function to get or create the singleton StakingStats entity
 function getOrCreateStakingStats(): StakingStats {
@@ -19,19 +27,11 @@ function getOrCreateStakingStats(): StakingStats {
     stats.lastUpdatedTimestamp = BigInt.zero();
     stats.lastUpdatedBlock = BigInt.zero();
     
-    // Initialize configuration fields with null/zero values
-    // These will be set by events or can be updated manually if needed
-    stats.stakerDistributionPool = null;
-    stats.lpDistributionPool = null;
+    // Initialize staking configuration fields with null values
+    // These will be set by contract calls when first event is processed
     stats.taxDistributionPool = null;
-    stats.taxFreeWithdrawDelay = null;
-    stats.minUnlockAmount = null;
-    stats.unlockAvailable = false;
     stats.stakerAllocationBP = null;
-    stats.liquidityProviderAllocationBP = null;
     stats.currentStakerFlowRate = null;
-    stats.currentLPFlowRate = null;
-    stats.currentSubsidyFlowRate = null;
   }
   return stats;
 }
@@ -57,8 +57,10 @@ export function handleUpdatedStakersUnits(event: UpdatedStakersUnitsEvent): void
 export function handleTaxAllocationUpdated(event: TaxAllocationUpdatedEvent): void {
   const stakingStats = getOrCreateStakingStats();
   
+  // Populate tax distribution pool address from contract
+  populateTaxDistributionPool(stakingStats, event.address);
+  
   stakingStats.stakerAllocationBP = event.params.stakerAllocationBP;
-  stakingStats.liquidityProviderAllocationBP = event.params.liquidityProviderAllocationBP;
   stakingStats.lastUpdatedTimestamp = event.block.timestamp;
   stakingStats.lastUpdatedBlock = event.block.number;
   
@@ -68,7 +70,9 @@ export function handleTaxAllocationUpdated(event: TaxAllocationUpdatedEvent): vo
 export function handleTaxDistributionFlowUpdated(event: TaxDistributionFlowUpdatedEvent): void {
   const stakingStats = getOrCreateStakingStats();
   
-  stakingStats.currentLPFlowRate = event.params.liquidityProviderFlowRate;
+  // Populate tax distribution pool address from contract
+  populateTaxDistributionPool(stakingStats, event.address);
+  
   stakingStats.currentStakerFlowRate = event.params.stakerFlowRate;
   stakingStats.lastUpdatedTimestamp = event.block.timestamp;
   stakingStats.lastUpdatedBlock = event.block.number;
@@ -76,12 +80,3 @@ export function handleTaxDistributionFlowUpdated(event: TaxDistributionFlowUpdat
   stakingStats.save();
 }
 
-export function handleSubsidyFlowRateUpdated(event: SubsidyFlowRateUpdatedEvent): void {
-  const stakingStats = getOrCreateStakingStats();
-  
-  stakingStats.currentSubsidyFlowRate = event.params.newSubsidyFlowRate;
-  stakingStats.lastUpdatedTimestamp = event.block.timestamp;
-  stakingStats.lastUpdatedBlock = event.block.number;
-  
-  stakingStats.save();
-}

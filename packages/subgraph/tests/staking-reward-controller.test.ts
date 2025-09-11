@@ -10,14 +10,12 @@ import { Address, BigInt } from "@graphprotocol/graph-ts"
 import { 
   handleUpdatedStakersUnits,
   handleTaxAllocationUpdated,
-  handleTaxDistributionFlowUpdated,
-  handleSubsidyFlowRateUpdated
+  handleTaxDistributionFlowUpdated
 } from "../src/staking-reward-controller"
 import { 
   createUpdatedStakersUnitsEvent,
   createTaxAllocationUpdatedEvent,
-  createTaxDistributionFlowUpdatedEvent,
-  createSubsidyFlowRateUpdatedEvent
+  createTaxDistributionFlowUpdatedEvent
 } from "./staking-reward-controller-utils"
 import { handleFluidStaked } from "../src/fluid-locker"
 import { createFluidStakedEvent } from "./fluid-locker-utils"
@@ -86,7 +84,7 @@ describe("StakingRewardController Tests", () => {
   describe("TaxAllocationUpdated Event Handler", () => {
     test("Should create and update StakingStats with tax allocation", () => {
       let stakerAllocation = BigInt.fromI32(7000) // 70%
-      let lpAllocation = BigInt.fromI32(3000) // 30%
+      let lpAllocation = BigInt.fromI32(3000) // 30% (ignored in simplified schema)
       
       let taxEvent = createTaxAllocationUpdatedEvent(stakerAllocation, lpAllocation)
       handleTaxAllocationUpdated(taxEvent)
@@ -94,7 +92,6 @@ describe("StakingRewardController Tests", () => {
       // Check StakingStats was created and updated
       assert.entityCount("StakingStats", 1)
       assert.fieldEquals("StakingStats", "global", "stakerAllocationBP", "7000")
-      assert.fieldEquals("StakingStats", "global", "liquidityProviderAllocationBP", "3000")
       assert.fieldEquals("StakingStats", "global", "lastUpdatedTimestamp", taxEvent.block.timestamp.toString())
       assert.fieldEquals("StakingStats", "global", "lastUpdatedBlock", taxEvent.block.number.toString())
     })
@@ -110,13 +107,12 @@ describe("StakingRewardController Tests", () => {
 
       assert.entityCount("StakingStats", 1)
       assert.fieldEquals("StakingStats", "global", "stakerAllocationBP", "8000")
-      assert.fieldEquals("StakingStats", "global", "liquidityProviderAllocationBP", "2000")
     })
   })
 
   describe("TaxDistributionFlowUpdated Event Handler", () => {
     test("Should create and update StakingStats with flow rates", () => {
-      let lpFlowRate = BigInt.fromI32(1000000) // Positive flow rate
+      let lpFlowRate = BigInt.fromI32(1000000) // Positive flow rate (ignored in simplified schema)
       let stakerFlowRate = BigInt.fromI32(2000000) // Positive flow rate
       
       let flowEvent = createTaxDistributionFlowUpdatedEvent(lpFlowRate, stakerFlowRate)
@@ -124,20 +120,18 @@ describe("StakingRewardController Tests", () => {
 
       // Check StakingStats was created and updated
       assert.entityCount("StakingStats", 1)
-      assert.fieldEquals("StakingStats", "global", "currentLPFlowRate", "1000000")
       assert.fieldEquals("StakingStats", "global", "currentStakerFlowRate", "2000000")
       assert.fieldEquals("StakingStats", "global", "lastUpdatedTimestamp", flowEvent.block.timestamp.toString())
       assert.fieldEquals("StakingStats", "global", "lastUpdatedBlock", flowEvent.block.number.toString())
     })
 
     test("Should handle negative flow rates", () => {
-      let negativeFlowRate = BigInt.fromI32(-500000)
-      let positiveFlowRate = BigInt.fromI32(1000000)
+      let negativeFlowRate = BigInt.fromI32(-500000) // LP flow rate (ignored)
+      let positiveFlowRate = BigInt.fromI32(1000000) // Staker flow rate
       
       let flowEvent = createTaxDistributionFlowUpdatedEvent(negativeFlowRate, positiveFlowRate)
       handleTaxDistributionFlowUpdated(flowEvent)
 
-      assert.fieldEquals("StakingStats", "global", "currentLPFlowRate", "-500000")
       assert.fieldEquals("StakingStats", "global", "currentStakerFlowRate", "1000000")
     })
 
@@ -151,43 +145,10 @@ describe("StakingRewardController Tests", () => {
       handleTaxDistributionFlowUpdated(updateEvent)
 
       assert.entityCount("StakingStats", 1)
-      assert.fieldEquals("StakingStats", "global", "currentLPFlowRate", "150000")
       assert.fieldEquals("StakingStats", "global", "currentStakerFlowRate", "300000")
     })
   })
 
-  describe("SubsidyFlowRateUpdated Event Handler", () => {
-    test("Should create and update StakingStats with subsidy flow rate", () => {
-      let subsidyFlowRate = BigInt.fromI32(5000000)
-      
-      let subsidyEvent = createSubsidyFlowRateUpdatedEvent(subsidyFlowRate)
-      handleSubsidyFlowRateUpdated(subsidyEvent)
-
-      // Check StakingStats was created and updated
-      assert.entityCount("StakingStats", 1)
-      assert.fieldEquals("StakingStats", "global", "currentSubsidyFlowRate", "5000000")
-      assert.fieldEquals("StakingStats", "global", "lastUpdatedTimestamp", subsidyEvent.block.timestamp.toString())
-      assert.fieldEquals("StakingStats", "global", "lastUpdatedBlock", subsidyEvent.block.number.toString())
-    })
-
-    test("Should handle zero subsidy flow rate", () => {
-      let zeroFlowRate = BigInt.zero()
-      
-      let subsidyEvent = createSubsidyFlowRateUpdatedEvent(zeroFlowRate)
-      handleSubsidyFlowRateUpdated(subsidyEvent)
-
-      assert.fieldEquals("StakingStats", "global", "currentSubsidyFlowRate", "0")
-    })
-
-    test("Should handle negative subsidy flow rate", () => {
-      let negativeFlowRate = BigInt.fromI32(-1000000)
-      
-      let subsidyEvent = createSubsidyFlowRateUpdatedEvent(negativeFlowRate)
-      handleSubsidyFlowRateUpdated(subsidyEvent)
-
-      assert.fieldEquals("StakingStats", "global", "currentSubsidyFlowRate", "-1000000")
-    })
-  })
 
   describe("Integration Tests", () => {
     test("Should handle multiple configuration updates", () => {
@@ -199,17 +160,10 @@ describe("StakingRewardController Tests", () => {
       let flowEvent = createTaxDistributionFlowUpdatedEvent(BigInt.fromI32(100000), BigInt.fromI32(200000))
       handleTaxDistributionFlowUpdated(flowEvent)
 
-      // Update subsidy flow rate
-      let subsidyEvent = createSubsidyFlowRateUpdatedEvent(BigInt.fromI32(500000))
-      handleSubsidyFlowRateUpdated(subsidyEvent)
-
-      // Check all fields are updated
+      // Check staking-related fields are updated
       assert.entityCount("StakingStats", 1)
       assert.fieldEquals("StakingStats", "global", "stakerAllocationBP", "6000")
-      assert.fieldEquals("StakingStats", "global", "liquidityProviderAllocationBP", "4000")
-      assert.fieldEquals("StakingStats", "global", "currentLPFlowRate", "100000")
       assert.fieldEquals("StakingStats", "global", "currentStakerFlowRate", "200000")
-      assert.fieldEquals("StakingStats", "global", "currentSubsidyFlowRate", "500000")
     })
 
     test("Should preserve other StakingStats fields when updating configuration", () => {
@@ -227,7 +181,6 @@ describe("StakingRewardController Tests", () => {
       assert.fieldEquals("StakingStats", "global", "totalStaked", "1000")
       assert.fieldEquals("StakingStats", "global", "activeStakerCount", "1")
       assert.fieldEquals("StakingStats", "global", "stakerAllocationBP", "7500")
-      assert.fieldEquals("StakingStats", "global", "liquidityProviderAllocationBP", "2500")
     })
   })
 })

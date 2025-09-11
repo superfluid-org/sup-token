@@ -3,8 +3,7 @@ import { ethereum, Address, BigInt } from "@graphprotocol/graph-ts"
 import {
   UpdatedStakersUnits,
   TaxAllocationUpdated,
-  TaxDistributionFlowUpdated,
-  SubsidyFlowRateUpdated
+  TaxDistributionFlowUpdated
 } from "../generated/StakingRewardController/StakingRewardController"
 
 export function createUpdatedStakersUnitsEvent(
@@ -79,19 +78,3 @@ export function createTaxDistributionFlowUpdatedEvent(
   return taxDistributionFlowUpdatedEvent
 }
 
-export function createSubsidyFlowRateUpdatedEvent(
-  newSubsidyFlowRate: BigInt
-): SubsidyFlowRateUpdated {
-  let subsidyFlowRateUpdatedEvent = changetype<SubsidyFlowRateUpdated>(newMockEvent())
-
-  subsidyFlowRateUpdatedEvent.parameters = new Array()
-
-  subsidyFlowRateUpdatedEvent.parameters.push(
-    new ethereum.EventParam(
-      "newSubsidyFlowRate",
-      ethereum.Value.fromSignedBigInt(newSubsidyFlowRate)
-    )
-  )
-
-  return subsidyFlowRateUpdatedEvent
-}

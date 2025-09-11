@@ -121,62 +121,21 @@ type StakingStats @entity(immutable: false) {
   """
   lastUpdatedBlock: BigInt!
 
-  # Immutable Configuration (set once at deployment)
-  """
-  Staker reward distribution pool address.
-  """
-  stakerDistributionPool: Bytes
-
-  """
-  LP reward distribution pool address.
-  """
-  lpDistributionPool: Bytes
-
+  # Dynamic Configuration (updated via events)
   """
   Tax distribution pool address.
   """
   taxDistributionPool: Bytes
 
   """
-  Tax-free withdrawal delay period in seconds.
-  """
-  taxFreeWithdrawDelay: BigInt
-
-  """
-  Minimum unlock amount required.
-  """
-  minUnlockAmount: BigInt
-
-  """
-  Whether unlocking is currently available.
-  """
-  unlockAvailable: Boolean
-
-  # Dynamic Configuration (updated via events)
-  """
-  Staker allocation in basis points.
+  Staker allocation in basis points (BP = Basis Points, where 10000 BP = 100%).
   """
   stakerAllocationBP: BigInt
-
-  """
-  LP allocation in basis points.
-  """
-  liquidityProviderAllocationBP: BigInt
 
   """
   Current staker flow rate from tax distribution.
   """
   currentStakerFlowRate: BigInt
-
-  """
-  Current LP flow rate from tax distribution.
-  """
-  currentLPFlowRate: BigInt
-
-  """
-  Current subsidy flow rate.
-  """
-  currentSubsidyFlowRate: BigInt
 }
 
 type LockerStaking @entity(immutable: false) {

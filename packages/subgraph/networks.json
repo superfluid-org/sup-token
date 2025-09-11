@@ -1,5 +1,6 @@
 {
   "base": {
+    "network": "base",
     "FluidEPProgramManager": {
       "address": "0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a",
       "startBlock": 26550970
@@ -14,6 +15,7 @@
     }
   },
   "base-sepolia": {
+    "network": "base-sepolia",
     "FluidEPProgramManager": {
       "address": "0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706",
       "startBlock": 20496038

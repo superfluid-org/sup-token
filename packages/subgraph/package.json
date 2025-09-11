@@ -1,12 +1,16 @@
 {
   "name": "sup-subgraph",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "scripts": {
+    "prepare:base": "node scripts/prepare-subgraph.js base",
+    "prepare:base-sepolia": "node scripts/prepare-subgraph.js base-sepolia",
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy:base": "graph codegen && graph build --network base && pnpm exec goldsky subgraph deploy sup/$npm_package_version --path ./build",
+    "build:base": "npm run prepare:base && npm run codegen && npm run build",
+    "build:base-sepolia": "npm run prepare:base-sepolia && npm run codegen && npm run build",
+    "deploy:base": "npm run build:base && pnpm exec goldsky subgraph deploy sup/$npm_package_version --path ./build",
     "tag:base": "pnpm exec goldsky subgraph tag create sup/$npm_package_version --tag prod",
-    "deploy:base-sepolia": "graph codegen && graph build --network base-sepolia && pnpm exec goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
+    "deploy:base-sepolia": "npm run build:base-sepolia && pnpm exec goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
     "tag:base-sepolia": "pnpm exec goldsky subgraph tag create sup_test/$npm_package_version --tag prod",
     "create-local": "graph create --node http://localhost:8020/ locker-system---base-sepolia",
     "remove-local": "graph remove --node http://localhost:8020/ locker-system---base-sepolia",
@@ -20,6 +24,7 @@
   "devDependencies": {
     "@goldskycom/cli": "^13.0.2",
     "assemblyscript": "^0.28.7",
-    "matchstick-as": "0.6.0"
+    "matchstick-as": "0.6.0",
+    "mustache": "^4.2.0"
   }
 }
