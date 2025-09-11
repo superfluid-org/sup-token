@@ -1,4 +1,4 @@
-type Program @entity {
+type Program @entity(immutable: false) {
   id: String! # uint256
   programAdmin: Bytes! # address
   signer: Bytes! # address
@@ -32,6 +32,11 @@ type Locker @entity(immutable: true) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+
+  """
+  Derived field referencing staking data for this locker.
+  """
+  stakingData: LockerStaking @derivedFrom(field: "locker")
 }
 
 type FluidStreamClaimEvent @entity(immutable: true) {
@@ -77,4 +82,187 @@ type ClaimEventUnit @entity(immutable: true) {
   amount: BigInt! # uint256
 
   event: FluidStreamClaimEvent!
+}
+
+type StakingStats @entity(immutable: false) {
+  """
+  Singleton entity to track global staking statistics.
+  ID is always "global".
+  """
+  id: ID!
+
+  """
+  Current total amount staked across all lockers.
+  """
+  totalStaked: BigInt!
+
+  """
+  Number of lockers that currently have staked balance > 0.
+  """
+  activeStakerCount: BigInt!
+
+  """
+  Total number of lockers that have ever staked (even if currently 0).
+  """
+  totalStakerCount: BigInt!
+
+  """
+  Total number of staking events (stakes + unstakes) across all lockers.
+  """
+  stakingEventCount: BigInt!
+
+  """
+  Timestamp when this entity was last updated.
+  """
+  lastUpdatedTimestamp: BigInt!
+
+  """
+  Block number when this entity was last updated.
+  """
+  lastUpdatedBlock: BigInt!
+
+  # Immutable Configuration (set once at deployment)
+  """
+  Staker reward distribution pool address.
+  """
+  stakerDistributionPool: Bytes
+
+  """
+  LP reward distribution pool address.
+  """
+  lpDistributionPool: Bytes
+
+  """
+  Tax distribution pool address.
+  """
+  taxDistributionPool: Bytes
+
+  """
+  Tax-free withdrawal delay period in seconds.
+  """
+  taxFreeWithdrawDelay: BigInt
+
+  """
+  Minimum unlock amount required.
+  """
+  minUnlockAmount: BigInt
+
+  """
+  Whether unlocking is currently available.
+  """
+  unlockAvailable: Boolean
+
+  # Dynamic Configuration (updated via events)
+  """
+  Staker allocation in basis points.
+  """
+  stakerAllocationBP: BigInt
+
+  """
+  LP allocation in basis points.
+  """
+  liquidityProviderAllocationBP: BigInt
+
+  """
+  Current staker flow rate from tax distribution.
+  """
+  currentStakerFlowRate: BigInt
+
+  """
+  Current LP flow rate from tax distribution.
+  """
+  currentLPFlowRate: BigInt
+
+  """
+  Current subsidy flow rate.
+  """
+  currentSubsidyFlowRate: BigInt
+}
+
+type LockerStaking @entity(immutable: false) {
+  """
+  The address of the locker contract.
+  """
+  id: Bytes!
+
+  """
+  Reference to the Locker entity.
+  """
+  locker: Locker!
+
+  """
+  Current amount staked in this locker.
+  """
+  currentStakedBalance: BigInt!
+
+  """
+  Number of staking events for this locker.
+  """
+  stakingEventCount: BigInt!
+
+  """
+  Timestamp when this locker first staked (null if never staked).
+  """
+  firstStakedTimestamp: BigInt
+
+  """
+  Most recent stake timestamp.
+  """
+  lastStakedTimestamp: BigInt
+
+  """
+  Most recent unstake timestamp.
+  """
+  lastUnstakedTimestamp: BigInt
+
+  """
+  Timestamp when this entity was last updated.
+  """
+  lastUpdatedTimestamp: BigInt!
+
+  """
+  Block number when this entity was last updated.
+  """
+  lastUpdatedBlock: BigInt!
+
+  """
+  Current reward units from StakingRewardController.
+  """
+  rewardUnits: BigInt!
+}
+
+enum StakingEventType {
+  STAKE
+  UNSTAKE
+}
+
+type StakingEvent @entity(immutable: true) {
+  """
+  Unique identifier: transaction hash concatenated with log index.
+  """
+  id: Bytes!
+
+  """
+  Reference to the LockerStaking entity this event affects.
+  """
+  lockerStaking: LockerStaking!
+
+  """
+  Type of staking event (STAKE or UNSTAKE).
+  """
+  type: StakingEventType!
+
+  """
+  Amount that was staked or unstaked.
+  """
+  amount: BigInt!
+
+  """
+  The total staked balance for this locker after this event.
+  """
+  newStakedBalance: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
 }

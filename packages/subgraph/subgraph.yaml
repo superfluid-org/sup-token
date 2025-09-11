@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: FluidEPProgramManager
-    network: base
+    network: base-sepolia
     source:
       abi: FluidEPProgramManager
-      address: "0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a"
-      startBlock: 26550970
+      address: "0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706"
+      startBlock: 20496038
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -33,11 +33,11 @@ dataSources:
       file: ./src/fluid-ep-program-manager.ts
   - kind: ethereum
     name: FluidLockerFactory
-    network: base
+    network: base-sepolia
     source:
       abi: FluidLockerFactory
-      address: "0xA6694cAB43713287F7735dADc940b555db9d39D9"
-      startBlock: 26550970
+      address: "0x897D343D24Ac5b84838B976Cf37036EDEfe3E967"
+      startBlock: 20496038
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -51,10 +51,37 @@ dataSources:
         - event: LockerCreated(address,address)
           handler: handleLockerCreated
       file: ./src/fluid-locker-factory.ts
+  - kind: ethereum
+    name: StakingRewardController
+    network: base-sepolia
+    source:
+      abi: StakingRewardController
+      address: "0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018"
+      startBlock: 20496038
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - LockerStaking
+        - StakingStats
+      abis:
+        - name: StakingRewardController
+          file: ./abis/StakingRewardController.json
+      eventHandlers:
+        - event: UpdatedStakersUnits(indexed address,indexed uint128)
+          handler: handleUpdatedStakersUnits
+        - event: TaxAllocationUpdated(uint128,uint128)
+          handler: handleTaxAllocationUpdated
+        - event: TaxDistributionFlowUpdated(int96,int96)
+          handler: handleTaxDistributionFlowUpdated
+        - event: SubsidyFlowRateUpdated(indexed int96)
+          handler: handleSubsidyFlowRateUpdated
+      file: ./src/staking-reward-controller.ts
 templates:
   - kind: ethereum
     name: FluidLocker
-    network: base
+    network: base-sepolia
     source:
       abi: FluidLocker
     mapping:
@@ -66,6 +93,9 @@ templates:
         - FluidStreamClaimEvent
         - ClaimEventUnit
         - Program
+        - StakingStats
+        - LockerStaking
+        - StakingEvent
       abis:
         - name: FluidLocker
           file: ./abis/FluidLocker.json
@@ -74,4 +104,8 @@ templates:
           handler: handleFluidStreamClaimed
         - event: FluidStreamsClaimed(indexed uint256[],indexed uint256[])
           handler: handleFluidStreamClaimedBulk
+        - event: FluidStaked(indexed uint256,indexed uint256)
+          handler: handleFluidStaked
+        - event: FluidUnstaked()
+          handler: handleFluidUnstaked
       file: ./src/fluid-locker.ts

@@ -1,8 +1,16 @@
-import { BigInt } from "@graphprotocol/graph-ts";
-import { FluidStreamClaimEvent, ClaimEventUnit } from "../generated/schema";
+import { BigInt, Address, Bytes } from "@graphprotocol/graph-ts";
+import { 
+  FluidStreamClaimEvent, 
+  ClaimEventUnit, 
+  StakingStats,
+  LockerStaking,
+  StakingEvent
+} from "../generated/schema";
 import {
   FluidStreamClaimed as FluidStreamClaimedEvent,
   FluidStreamsClaimed as FluidStreamsClaimedEvent,
+  FluidStaked as FluidStakedEvent,
+  FluidUnstaked as FluidUnstakedEvent,
 } from "../generated/templates/FluidLocker/FluidLocker";
 
 export function handleFluidStreamClaimed(event: FluidStreamClaimedEvent): void {
@@ -36,13 +44,175 @@ export function handleFluidStreamClaimedBulk(event: FluidStreamsClaimedEvent): v
 
   streamClaimEvent.save();
 
-  for (let i = 0; i < event.params.programIds.length; i++) {
+  for (let i = 0; i < event.params.programId.length; i++) {
     let claimUnit = new ClaimEventUnit(
       event.transaction.hash.concatI32(event.logIndex.toI32()).concatI32(i)
     );
     claimUnit.event = streamClaimEvent.id;
-    claimUnit.programId = event.params.programIds[i].toString();
+    claimUnit.programId = event.params.programId[i].toString();
     claimUnit.amount = BigInt.fromU32(event.params.totalProgramUnits[i]);
     claimUnit.save();
   }
+}
+
+// Helper function to get or create the singleton StakingStats entity
+function getOrCreateStakingStats(): StakingStats {
+  let stats = StakingStats.load("global");
+  if (!stats) {
+    stats = new StakingStats("global");
+    stats.totalStaked = BigInt.zero();
+    stats.activeStakerCount = BigInt.zero();
+    stats.totalStakerCount = BigInt.zero();
+    stats.stakingEventCount = BigInt.zero();
+    stats.lastUpdatedTimestamp = BigInt.zero();
+    stats.lastUpdatedBlock = BigInt.zero();
+    
+    // Initialize configuration fields with null/zero values
+    // These will be set by events or can be updated manually if needed
+    stats.stakerDistributionPool = null;
+    stats.lpDistributionPool = null;
+    stats.taxDistributionPool = null;
+    stats.taxFreeWithdrawDelay = null;
+    stats.minUnlockAmount = null;
+    stats.unlockAvailable = false;
+    stats.stakerAllocationBP = null;
+    stats.liquidityProviderAllocationBP = null;
+    stats.currentStakerFlowRate = null;
+    stats.currentLPFlowRate = null;
+    stats.currentSubsidyFlowRate = null;
+  }
+  return stats;
+}
+
+// Helper function to get or create a LockerStaking entity
+function getOrCreateLockerStaking(lockerAddress: Bytes): LockerStaking {
+  let lockerStaking = LockerStaking.load(lockerAddress);
+  if (!lockerStaking) {
+    lockerStaking = new LockerStaking(lockerAddress);
+    lockerStaking.locker = lockerAddress;
+    lockerStaking.currentStakedBalance = BigInt.zero();
+    lockerStaking.stakingEventCount = BigInt.zero();
+    lockerStaking.firstStakedTimestamp = null;
+    lockerStaking.lastStakedTimestamp = null;
+    lockerStaking.lastUnstakedTimestamp = null;
+    lockerStaking.lastUpdatedTimestamp = BigInt.zero();
+    lockerStaking.lastUpdatedBlock = BigInt.zero();
+    lockerStaking.rewardUnits = BigInt.zero();
+  }
+  return lockerStaking;
+}
+
+// Helper function to update staker counts in global stats
+function updateStakerCounts(
+  previousBalance: BigInt,
+  newBalance: BigInt,
+  stats: StakingStats,
+  isFirstTimeStaking: boolean
+): void {
+  const wasActive = previousBalance.gt(BigInt.zero());
+  const isActive = newBalance.gt(BigInt.zero());
+
+  // Update active staker count
+  if (!wasActive && isActive) {
+    // Becoming active
+    stats.activeStakerCount = stats.activeStakerCount.plus(BigInt.fromI32(1));
+  } else if (wasActive && !isActive) {
+    // Becoming inactive
+    stats.activeStakerCount = stats.activeStakerCount.minus(BigInt.fromI32(1));
+  }
+
+  // Update total staker count if this is first time staking
+  if (isFirstTimeStaking) {
+    stats.totalStakerCount = stats.totalStakerCount.plus(BigInt.fromI32(1));
+  }
+}
+
+export function handleFluidStaked(event: FluidStakedEvent): void {
+  const lockerAddress = event.address;
+  const newTotalStakedBalance = event.params.newTotalStakedBalance;
+  const addedAmount = event.params.addedAmount;
+
+  // Get or create entities
+  let lockerStaking = getOrCreateLockerStaking(lockerAddress);
+  let stats = getOrCreateStakingStats();
+
+  const previousBalance = lockerStaking.currentStakedBalance;
+  const isFirstTimeStaking = lockerStaking.firstStakedTimestamp === null;
+
+  // Update locker staking data
+  lockerStaking.currentStakedBalance = newTotalStakedBalance;
+  lockerStaking.stakingEventCount = lockerStaking.stakingEventCount.plus(BigInt.fromI32(1));
+  lockerStaking.lastStakedTimestamp = event.block.timestamp;
+  lockerStaking.lastUpdatedTimestamp = event.block.timestamp;
+  lockerStaking.lastUpdatedBlock = event.block.number;
+
+  if (isFirstTimeStaking) {
+    lockerStaking.firstStakedTimestamp = event.block.timestamp;
+  }
+
+  lockerStaking.save();
+
+  // Update global stats
+  stats.totalStaked = stats.totalStaked.plus(addedAmount);
+  stats.stakingEventCount = stats.stakingEventCount.plus(BigInt.fromI32(1));
+  stats.lastUpdatedTimestamp = event.block.timestamp;
+  stats.lastUpdatedBlock = event.block.number;
+
+  updateStakerCounts(previousBalance, newTotalStakedBalance, stats, isFirstTimeStaking);
+  stats.save();
+
+  // Create staking event
+  const stakingEvent = new StakingEvent(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  stakingEvent.lockerStaking = lockerAddress;
+  stakingEvent.type = "STAKE";
+  stakingEvent.amount = addedAmount;
+  stakingEvent.newStakedBalance = newTotalStakedBalance;
+  stakingEvent.blockNumber = event.block.number;
+  stakingEvent.blockTimestamp = event.block.timestamp;
+  stakingEvent.transactionHash = event.transaction.hash;
+  stakingEvent.save();
+}
+
+export function handleFluidUnstaked(event: FluidUnstakedEvent): void {
+  const lockerAddress = event.address;
+
+  // Get existing entities (should exist since this is unstaking)
+  let lockerStaking = getOrCreateLockerStaking(lockerAddress);
+  let stats = getOrCreateStakingStats();
+
+  const previousBalance = lockerStaking.currentStakedBalance;
+  const unstakedAmount = previousBalance; // All balance is unstaked
+  const newBalance = BigInt.zero();
+
+  // Update locker staking data
+  lockerStaking.currentStakedBalance = newBalance;
+  lockerStaking.stakingEventCount = lockerStaking.stakingEventCount.plus(BigInt.fromI32(1));
+  lockerStaking.lastUnstakedTimestamp = event.block.timestamp;
+  lockerStaking.lastUpdatedTimestamp = event.block.timestamp;
+  lockerStaking.lastUpdatedBlock = event.block.number;
+  lockerStaking.save();
+
+  // Update global stats
+  stats.totalStaked = stats.totalStaked.minus(unstakedAmount);
+  stats.stakingEventCount = stats.stakingEventCount.plus(BigInt.fromI32(1));
+  stats.lastUpdatedTimestamp = event.block.timestamp;
+  stats.lastUpdatedBlock = event.block.number;
+
+  updateStakerCounts(previousBalance, newBalance, stats, false);
+  stats.save();
+
+  // Create staking event
+  const stakingEvent = new StakingEvent(
+    event.transaction.hash.concatI32(event.logIndex.toI32())
+  );
+  stakingEvent.lockerStaking = lockerAddress;
+  stakingEvent.type = "UNSTAKE";
+  stakingEvent.amount = unstakedAmount;
+  stakingEvent.newStakedBalance = newBalance;
+  stakingEvent.blockNumber = event.block.number;
+  stakingEvent.blockTimestamp = event.block.timestamp;
+  stakingEvent.transactionHash = event.transaction.hash;
+  stakingEvent.save();
 }

@@ -7,6 +7,10 @@
     "FluidLockerFactory": {
       "address": "0xA6694cAB43713287F7735dADc940b555db9d39D9",
       "startBlock": 26550970
+    },
+    "StakingRewardController": {
+      "address": "0xb19Ae25A98d352B36CED60F93db926247535048b",
+      "startBlock": 26550970
     }
   },
   "base-sepolia": {
@@ -16,6 +20,10 @@
     },
     "FluidLockerFactory": {
       "address": "0x897D343D24Ac5b84838B976Cf37036EDEfe3E967",
+      "startBlock": 20496038
+    },
+    "StakingRewardController": {
+      "address": "0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018",
       "startBlock": 20496038
     }
   }

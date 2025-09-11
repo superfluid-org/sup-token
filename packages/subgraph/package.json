@@ -1,21 +1,25 @@
 {
   "name": "sup-subgraph",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy:base": "graph codegen && graph build --network base && goldsky subgraph deploy sup/$npm_package_version --path ./build",
-    "tag:base": "goldsky subgraph tag create sup/$npm_package_version --tag prod",
-    "deploy:base-sepolia": "graph codegen && graph build --network base-sepolia && goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
-    "tag:base-sepolia": "goldsky subgraph tag create sup_test/$npm_package_version --tag prod",
+    "deploy:base": "graph codegen && graph build --network base && pnpm exec goldsky subgraph deploy sup/$npm_package_version --path ./build",
+    "tag:base": "pnpm exec goldsky subgraph tag create sup/$npm_package_version --tag prod",
+    "deploy:base-sepolia": "graph codegen && graph build --network base-sepolia && pnpm exec goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
+    "tag:base-sepolia": "pnpm exec goldsky subgraph tag create sup_test/$npm_package_version --tag prod",
     "create-local": "graph create --node http://localhost:8020/ locker-system---base-sepolia",
     "remove-local": "graph remove --node http://localhost:8020/ locker-system---base-sepolia",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 locker-system---base-sepolia",
     "test": "graph test"
   },
   "dependencies": {
-    "@graphprotocol/graph-cli": "0.93.1",
-    "@graphprotocol/graph-ts": "0.36.0"
+    "@graphprotocol/graph-cli": "0.97.1",
+    "@graphprotocol/graph-ts": "0.38.1"
   },
-  "devDependencies": { "matchstick-as": "0.6.0" }
+  "devDependencies": {
+    "@goldskycom/cli": "^13.0.2",
+    "assemblyscript": "^0.28.7",
+    "matchstick-as": "0.6.0"
+  }
 }
