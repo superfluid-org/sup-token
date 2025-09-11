@@ -90,18 +90,20 @@ abstract contract FluidLockerBaseTest is SFTest {
             LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioLowerX96, sqrtRatioHigherX96, liquidity);
     }
 
-    function _helperBuySUP(address buyer, uint256 wethAmount) internal {
-        deal(address(_weth), buyer, wethAmount);
+    function _helperBuySUP(address buyer, uint256 ethAmount) internal {
+        vm.deal(buyer, ethAmount);
 
         vm.startPrank(buyer);
-        _weth.approve(address(_swapRouter), wethAmount);
+        _ethx.upgradeByETH{ value: ethAmount }();
+
+        _ethx.approve(address(_swapRouter), ethAmount);
 
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: address(_weth),
+            tokenIn: address(_ethx),
             tokenOut: address(_fluidSuperToken),
             fee: POOL_FEE,
             recipient: buyer,
-            amountIn: wethAmount,
+            amountIn: ethAmount,
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
@@ -119,7 +121,7 @@ abstract contract FluidLockerBaseTest is SFTest {
 
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: address(_fluidSuperToken),
-            tokenOut: address(_weth),
+            tokenOut: address(_ethx),
             fee: POOL_FEE,
             recipient: seller,
             amountIn: supAmount,
@@ -1135,14 +1137,14 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             0,
             "tokenId should not be 0"
         );
-        assertEq(_weth.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
+        assertEq(_ethx.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
     }
 
     function testV2CollectFees() external {
         _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20_000e18);
 
-        uint256 aliceWethBalanceBefore = _weth.balanceOf(address(ALICE));
+        uint256 aliceWethBalanceBefore = _ethx.balanceOf(address(ALICE));
         uint256 aliceSupBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
@@ -1151,7 +1153,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.prank(ALICE);
         aliceLocker.collectFees(positionTokenId);
 
-        uint256 aliceWethBalanceAfter = _weth.balanceOf(address(ALICE));
+        uint256 aliceWethBalanceAfter = _ethx.balanceOf(address(ALICE));
         uint256 aliceSupBalanceAfter = _fluidSuperToken.balanceOf(address(ALICE));
 
         assertGt(aliceWethBalanceAfter, aliceWethBalanceBefore, "alice weth balance should increase");
@@ -1172,7 +1174,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
 
-        uint256 expectedEthReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedEthReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBackInLocker =
             _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
@@ -1235,7 +1237,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, liquidityToRemove);
 
-        uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedWethReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBackInLocker =
             _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
@@ -1292,7 +1294,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
 
-        uint256 expectedEthReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedEthReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
         uint256 ethBalanceBefore = ALICE.balance;
@@ -1338,7 +1340,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
 
-        uint256 expectedEthReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedEthReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
         uint256 ethBalanceBefore = ALICE.balance;
@@ -1393,7 +1395,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, liquidityToRemove);
 
-        uint256 expectedEthReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedEthReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
         uint256 ethBalanceBefore = ALICE.balance;
@@ -1430,7 +1432,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         (amount0ToRemove, amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
 
-        expectedEthReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        expectedEthReceived = _pool.token0() == address(_ethx) ? amount0ToRemove : amount1ToRemove;
         expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
         ethBalanceBefore = ALICE.balance;

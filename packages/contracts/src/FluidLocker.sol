@@ -34,7 +34,6 @@ import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.so
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
-import { IWETH9 } from "./token/IWETH9.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -42,6 +41,7 @@ import {
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { ISETH } from "@superfluid-finance/ethereum-contracts/contracts//interfaces/tokens/ISETH.sol";
 
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
@@ -137,8 +137,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Uniswap V3 Nonfungible Position Manager interface
     INonfungiblePositionManager public immutable NONFUNGIBLE_POSITION_MANAGER;
 
-    /// @notice ETH/SUP Uniswap V3 Pool interface
-    IUniswapV3Pool public immutable ETH_SUP_POOL;
+    /// @notice ETHx/SUP Uniswap V3 Pool interface
+    IUniswapV3Pool public immutable ETHx_SUP_POOL;
 
     /// @notice Pump percentage (expressed in basis points)
     uint256 public constant BP_PUMP_RATIO = 100; // 1%
@@ -236,7 +236,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         SWAP_ROUTER = swapRouter;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
-        ETH_SUP_POOL = ethSupPool;
+        ETHx_SUP_POOL = ethSupPool;
     }
 
     /**
@@ -400,17 +400,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner unlockAvailable {
-        address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
+        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
 
         uint256 ethAmount = msg.value;
 
-        // Wrap ETH into WETH
-        IWETH9(weth).deposit{ value: ethAmount }();
+        // Upgrade ETH to ETHx
+        ISETH(ethx).upgradeByETH{ value: ethAmount }();
 
         uint256 ethPumpAmount = ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR;
 
-        // Pumponomics (market buy SUP with 1% of the provided paired asset)
-        _pump(weth, ethPumpAmount);
+        // Pumponomics (market buy SUP with 1% of the ETHx provided)
+        _pump(ethx, ethPumpAmount);
 
         // Ensure that the locker has enough available balance to provide liquidity
         if (getAvailableBalance() < supAmount) {
@@ -421,7 +421,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 ethLPAmount = ethAmount - ethPumpAmount;
 
         // Approve the locker to spend the paired asset and the $SUP tokens
-        TransferHelper.safeApprove(weth, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
+        TransferHelper.safeApprove(ethx, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supAmount);
 
         // Create a new Uniswap V3 position
@@ -455,19 +455,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Collect the fees
         _collect(tokenId, lockerOwner);
 
-        address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
+        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
 
         (, uint256 withdrawnSup) = _decreasePosition(tokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
-        // Unwrap the withdrawn WETH
-        IWETH9(weth).withdraw(IERC20(weth).balanceOf(address(this)));
+        // Downgrade the withdrawn ETHx
+        ISETH(ethx).downgradeToETH(IERC20(ethx).balanceOf(address(this)));
 
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
-
-        // TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
             TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
@@ -493,7 +491,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
-        if (ETH_SUP_POOL.token0() == address(FLUID)) {
+        if (ETHx_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
             (collectedSup, collectedWeth) = _collect(tokenId, lockerOwner);
         } else {
@@ -504,8 +502,20 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function withdrawDustETH() external onlyLockerOwner {
-        // Transfer ETH to the locker owner
-        TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
+
+        uint256 ethxBalance = ISETH(ethx).balanceOf(address(this));
+
+        if (ethxBalance > 0) {
+            // Downgrade ETH to ETHx
+            ISETH(ethx).downgradeToETH(ethxBalance);
+        }
+
+        uint256 ethBalance = address(this).balance;
+        if (ethBalance > 0) {
+            // Transfer ETH to the locker owner
+            TransferHelper.safeTransferETH(lockerOwner, ethBalance);
+        }
     }
 
     /// @inheritdoc IFluidLocker
@@ -688,18 +698,18 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /**
      * @notice Swaps ETH for SUP tokens using Uniswap V3 (Pumponomics)
-     * @param weth WETH address
+     * @param ethx ETHx address
      * @param ethAmount The amount of ETH to swap
      */
-    function _pump(address weth, uint256 ethAmount) internal {
-        IERC20(weth).approve(address(SWAP_ROUTER), ethAmount);
+    function _pump(address ethx, uint256 ethAmount) internal {
+        IERC20(ethx).approve(address(SWAP_ROUTER), ethAmount);
 
         // No need slippage protection here as it is
         // implicitely covered by the `_createPosition` slippage protection
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: weth,
+            tokenIn: ethx,
             tokenOut: address(FLUID),
-            fee: ETH_SUP_POOL.fee(),
+            fee: ETHx_SUP_POOL.fee(),
             recipient: address(this),
             amountIn: ethAmount,
             amountOutMinimum: 0,
@@ -721,7 +731,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         internal
         returns (uint256 positionTokenId, uint256 depositedEthAmount, uint256 depositedSupAmount)
     {
-        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
+        bool zeroIsSup = ETHx_SUP_POOL.token0() == address(FLUID);
 
         INonfungiblePositionManager.MintParams memory mintParams = _formatMintParams(zeroIsSup, ethAmount, supAmount);
 
@@ -819,12 +829,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
-        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
+        int24 tickSpacing = ETHx_SUP_POOL.tickSpacing();
 
         mintParams = INonfungiblePositionManager.MintParams({
-            token0: ETH_SUP_POOL.token0(),
-            token1: ETH_SUP_POOL.token1(),
-            fee: ETH_SUP_POOL.fee(),
+            token0: ETHx_SUP_POOL.token0(),
+            token1: ETHx_SUP_POOL.token1(),
+            fee: ETHx_SUP_POOL.fee(),
             tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
             tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
             amount0Desired: amount0,

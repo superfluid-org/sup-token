@@ -15,6 +15,7 @@ import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contract
 import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/utils/TestToken.sol";
 import { SuperToken, ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { ISETH } from "@superfluid-finance/ethereum-contracts/contracts//interfaces/tokens/ISETH.sol";
 
 import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
@@ -67,7 +68,7 @@ contract SFTest is Test {
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
     ISuperToken internal _fluid;
-    IERC20 internal _weth;
+    ISETH internal _ethx;
 
     FluidEPProgramManager internal _programManager;
     FluidLocker internal _fluidLockerLogic;
@@ -86,7 +87,7 @@ contract SFTest is Test {
     function setUp() public virtual {
         vm.createSelectFork(vm.envString("BASE_MAINNET_RPC_URL"), 28109090);
 
-        _weth = IERC20(0x4200000000000000000000000000000000000006);
+        _ethx = ISETH(0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93);
 
         // Superfluid Protocol Deployment Start
         vm.etch(ERC1820RegistryCompiled.at, ERC1820RegistryCompiled.bin);
@@ -96,15 +97,15 @@ contract SFTest is Test {
         _sf = _deployer.getFramework();
 
         (_fluidUnderlying, _fluidSuperToken) =
-            _deployer.deployWrapperSuperToken("Super FLUID", "FLUIDx", 18, type(uint256).max, address(0));
+            _deployer.deployWrapperSuperToken("Superfluid Token", "SUP", 18, type(uint256).max, address(0));
 
         // Superfluid Protocol Deployment End
 
         // Mint tokens for test accounts
         for (uint256 i; i < TEST_ACCOUNTS.length; ++i) {
             vm.startPrank(TEST_ACCOUNTS[i]);
-            vm.deal(TEST_ACCOUNTS[i], INITIAL_BALANCE);
-            deal(address(_weth), TEST_ACCOUNTS[i], INITIAL_BALANCE);
+            vm.deal(TEST_ACCOUNTS[i], INITIAL_BALANCE * 2);
+            _ethx.upgradeByETH{ value: INITIAL_BALANCE }();
             vm.stopPrank();
         }
 
@@ -120,26 +121,26 @@ contract SFTest is Test {
         _poolFactory = IUniswapV3Factory(0x33128a8fC17869897dcE68Ed026d694621f6FDfD);
 
         // Deploy the pool
-        _pool = IUniswapV3Pool(_poolFactory.createPool(address(_weth), address(_fluidSuperToken), POOL_FEE));
+        _pool = IUniswapV3Pool(_poolFactory.createPool(address(_ethx), address(_fluidSuperToken), POOL_FEE));
 
         // Initialize the pool
         uint160 sqrtPriceX96 =
-            _pool.token0() == address(_weth) ? INITIAL_SQRT_PRICEX96_SUP_PER_WETH : INITIAL_SQRT_PRICEX96_WETH_PER_SUP;
+            _pool.token0() == address(_ethx) ? INITIAL_SQRT_PRICEX96_SUP_PER_WETH : INITIAL_SQRT_PRICEX96_WETH_PER_SUP;
         _pool.initialize(sqrtPriceX96);
 
         // Provide liquidity to the pool (from the treasury)
         vm.startPrank(FLUID_TREASURY);
-        uint256 wethAmountToDeposit = 1000 ether;
+        uint256 ethxAmountToDeposit = 1000 ether;
         uint256 supAmountToDeposit = 20_000_000 ether;
 
-        _weth.approve(address(_nonfungiblePositionManager), wethAmountToDeposit);
+        _ethx.approve(address(_nonfungiblePositionManager), ethxAmountToDeposit);
         _fluidSuperToken.approve(address(_nonfungiblePositionManager), supAmountToDeposit);
 
-        uint256 amount0 = _pool.token0() == address(_weth) ? wethAmountToDeposit : supAmountToDeposit;
-        uint256 amount1 = _pool.token1() == address(_weth) ? wethAmountToDeposit : supAmountToDeposit;
+        uint256 amount0 = _pool.token0() == address(_ethx) ? ethxAmountToDeposit : supAmountToDeposit;
+        uint256 amount1 = _pool.token1() == address(_ethx) ? ethxAmountToDeposit : supAmountToDeposit;
 
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
-            token0: address(_weth),
+            token0: address(_ethx),
             token1: address(_fluidSuperToken),
             fee: POOL_FEE,
             tickLower: (_MIN_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
