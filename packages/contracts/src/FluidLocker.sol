@@ -766,22 +766,23 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @notice Decreases liquidity from a Uniswap V3 position
      * @param tokenId The ID of the NFT position to decrease liquidity from
      * @param liquidityToRemove The amount of liquidity to remove from the position (only collect fees if set to 0)
-     * @param pairedAssetAmountToRemove The minimum amount of paired asset to remove from the position
-     * @param supAmountToRemove The minimum amount of $FLUID to remove from the position
+     * @param amount0ToRemove The minimum amount Token0 to remove from the position
+     * @param amount1ToRemove The minimum amount Token1 to remove from the position
      * @return withdrawnPairedAssetAmount The amount of paired asset received from removing liquidity
      * @return withdrawnSupAmount The amount of $FLUID received from removing liquidity
      */
     function _decreasePosition(
         uint256 tokenId,
         uint128 liquidityToRemove,
-        uint256 pairedAssetAmountToRemove,
-        uint256 supAmountToRemove
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
     ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
-        (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
-        bool zeroIsSup = token0 == address(FLUID);
+        // (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
+        // bool zeroIsSup = token0 == address(FLUID);
 
-        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmountToRemove, pairedAssetAmountToRemove);
-        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
+
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
 
         // construct Decrease Liquidity parameters
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
