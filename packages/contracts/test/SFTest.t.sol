@@ -139,8 +139,8 @@ contract SFTest is Test {
         uint256 amount1 = _pool.token1() == address(_weth) ? wethAmountToDeposit : supAmountToDeposit;
 
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
-            token0: address(_weth),
-            token1: address(_fluidSuperToken),
+            token0: _pool.token0(),
+            token1: _pool.token1(),
             fee: POOL_FEE,
             tickLower: (_MIN_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
             tickUpper: (_MAX_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
