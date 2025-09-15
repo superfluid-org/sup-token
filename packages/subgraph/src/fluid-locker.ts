@@ -175,8 +175,8 @@ export function handleFluidUnstaked(event: FluidUnstakedEvent): void {
   let stats = getOrCreateStakingStats();
 
   const previousBalance = lockerStaking.currentStakedBalance;
-  const unstakedAmount = previousBalance; // All balance is unstaked
-  const newBalance = BigInt.zero();
+  const unstakedAmount = event.params.removedAmount;
+  const newBalance = event.params.newTotalStakedBalance;
 
   // Update locker staking data
   lockerStaking.currentStakedBalance = newBalance;

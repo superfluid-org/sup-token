@@ -130,7 +130,7 @@ describe("FluidLocker Staking Tests", () => {
       handleFluidStaked(stakeEvent)
 
       // Then unstake all
-      let unstakeEvent = createFluidUnstakedEvent()
+      let unstakeEvent = createFluidUnstakedEvent(BigInt.fromI32(0), BigInt.fromI32(1000))
       unstakeEvent.address = lockerAddress
       handleFluidUnstaked(unstakeEvent)
 
@@ -153,7 +153,7 @@ describe("FluidLocker Staking Tests", () => {
       handleFluidStaked(stakeEvent)
 
       // Then unstake all
-      let unstakeEvent = createFluidUnstakedEvent()
+      let unstakeEvent = createFluidUnstakedEvent(BigInt.fromI32(0), BigInt.fromI32(1000))
       unstakeEvent.address = lockerAddress
       handleFluidUnstaked(unstakeEvent)
 
@@ -170,7 +170,7 @@ describe("FluidLocker Staking Tests", () => {
       let lockerAddress = Address.fromString("0x0000000000000000000000000000000000000001")
       
       // Try to unstake without ever staking
-      let unstakeEvent = createFluidUnstakedEvent()
+      let unstakeEvent = createFluidUnstakedEvent(BigInt.fromI32(0), BigInt.fromI32(0))
       unstakeEvent.address = lockerAddress
       handleFluidUnstaked(unstakeEvent)
 
@@ -178,6 +178,69 @@ describe("FluidLocker Staking Tests", () => {
       assert.entityCount("StakingStats", 1)
       assert.fieldEquals("StakingStats", "global", "totalStaked", "0")
       assert.fieldEquals("StakingStats", "global", "stakingEventCount", "1")
+    })
+
+    test("Should handle partial unstaking correctly", () => {
+      let lockerAddress = Address.fromString("0x0000000000000000000000000000000000000001")
+      
+      // First stake 1000
+      let stakeEvent = createFluidStakedEvent(BigInt.fromI32(1000), BigInt.fromI32(1000))
+      stakeEvent.address = lockerAddress
+      handleFluidStaked(stakeEvent)
+
+      // Then unstake 400 (partial)
+      let unstakeEvent = createFluidUnstakedEvent(BigInt.fromI32(600), BigInt.fromI32(400))
+      unstakeEvent.address = lockerAddress
+      handleFluidUnstaked(unstakeEvent)
+
+      // Check updated values
+      assert.fieldEquals("StakingStats", "global", "totalStaked", "600")
+      assert.fieldEquals("StakingStats", "global", "activeStakerCount", "1") // Still active
+      assert.fieldEquals("StakingStats", "global", "totalStakerCount", "1")
+      assert.fieldEquals("StakingStats", "global", "stakingEventCount", "2")
+      
+      assert.fieldEquals("LockerStaking", lockerAddress.toHexString(), "currentStakedBalance", "600")
+      assert.fieldEquals("LockerStaking", lockerAddress.toHexString(), "stakingEventCount", "2")
+      
+      // Check StakingEvent
+      let expectedId = unstakeEvent.transaction.hash.concatI32(unstakeEvent.logIndex.toI32())
+      assert.entityCount("StakingEvent", 2) // 1 stake + 1 unstake
+      assert.fieldEquals("StakingEvent", expectedId.toHexString(), "type", "UNSTAKE")
+      assert.fieldEquals("StakingEvent", expectedId.toHexString(), "amount", "400")
+      assert.fieldEquals("StakingEvent", expectedId.toHexString(), "newStakedBalance", "600")
+    })
+
+    test("Should handle multiple partial unstakes correctly", () => {
+      let lockerAddress = Address.fromString("0x0000000000000000000000000000000000000001")
+      
+      // First stake 1000
+      let stakeEvent = createFluidStakedEvent(BigInt.fromI32(1000), BigInt.fromI32(1000))
+      stakeEvent.address = lockerAddress
+      handleFluidStaked(stakeEvent)
+
+      // First partial unstake: 300
+      let unstake1Event = createFluidUnstakedEvent(BigInt.fromI32(700), BigInt.fromI32(300))
+      unstake1Event.address = lockerAddress
+      handleFluidUnstaked(unstake1Event)
+
+      // Second partial unstake: 200
+      let unstake2Event = createFluidUnstakedEvent(BigInt.fromI32(500), BigInt.fromI32(200))
+      unstake2Event.address = lockerAddress
+      handleFluidUnstaked(unstake2Event)
+
+      // Final partial unstake: 500 (all remaining)
+      let unstake3Event = createFluidUnstakedEvent(BigInt.fromI32(0), BigInt.fromI32(500))
+      unstake3Event.address = lockerAddress
+      handleFluidUnstaked(unstake3Event)
+
+      // Check final state
+      assert.fieldEquals("StakingStats", "global", "totalStaked", "0")
+      assert.fieldEquals("StakingStats", "global", "activeStakerCount", "0") // Now inactive
+      assert.fieldEquals("StakingStats", "global", "totalStakerCount", "1")
+      assert.fieldEquals("StakingStats", "global", "stakingEventCount", "4") // 1 stake + 3 unstakes
+      
+      assert.fieldEquals("LockerStaking", lockerAddress.toHexString(), "currentStakedBalance", "0")
+      assert.fieldEquals("LockerStaking", lockerAddress.toHexString(), "stakingEventCount", "4")
     })
   })
 
@@ -198,7 +261,7 @@ describe("FluidLocker Staking Tests", () => {
       handleFluidStaked(stake2Event)
 
       // Locker 1: Unstake all
-      let unstake1Event = createFluidUnstakedEvent()
+      let unstake1Event = createFluidUnstakedEvent(BigInt.fromI32(0), BigInt.fromI32(500))
       unstake1Event.address = locker1
       handleFluidUnstaked(unstake1Event)
 

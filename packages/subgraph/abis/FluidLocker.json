@@ -1,267 +1,5 @@
 [
   {
-    "type": "constructor",
-    "inputs": [
-      {
-        "name": "fluid",
-        "type": "address",
-        "internalType": "contract ISuperToken"
-      },
-      {
-        "name": "programManager",
-        "type": "address",
-        "internalType": "contract IEPProgramManager"
-      },
-      {
-        "name": "stakingRewardController",
-        "type": "address",
-        "internalType": "contract IStakingRewardController"
-      },
-      {
-        "name": "fontaineBeacon",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "isUnlockAvailable",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "nonfungiblePositionManager",
-        "type": "address",
-        "internalType": "contract INonfungiblePositionManager"
-      },
-      {
-        "name": "ethSupPool",
-        "type": "address",
-        "internalType": "contract IUniswapV3Pool"
-      },
-      {
-        "name": "swapRouter",
-        "type": "address",
-        "internalType": "contract IV3SwapRouter"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "fallback",
-    "stateMutability": "payable"
-  },
-  {
-    "type": "receive",
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "BP_PUMP_RATIO",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "BP_SLIPPAGE_TOLERANCE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "EP_PROGRAM_MANAGER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IEPProgramManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "ETH_SUP_POOL",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IUniswapV3Pool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "FLUID",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ISuperToken"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "FONTAINE_BEACON",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract UpgradeableBeacon"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "LP_DISTRIBUTION_POOL",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ISuperfluidPool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "LP_OPERATION_DEADLINE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MIN_UNLOCK_AMOUNT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "NONFUNGIBLE_POSITION_MANAGER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract INonfungiblePositionManager"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "STAKER_DISTRIBUTION_POOL",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ISuperfluidPool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "STAKING_REWARD_CONTROLLER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IStakingRewardController"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "SWAP_ROUTER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IV3SwapRouter"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "TAX_FREE_WITHDRAW_DELAY",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "UNLOCK_AVAILABLE",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "activePositionCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
     "type": "function",
     "name": "claim",
     "inputs": [
@@ -415,38 +153,6 @@
   },
   {
     "type": "function",
-    "name": "fontaineCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "fontaines",
-    "inputs": [
-      {
-        "name": "unlockId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "fontaine",
-        "type": "address",
-        "internalType": "contract IFontaine"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getAvailableBalance",
     "inputs": [],
     "outputs": [
@@ -594,19 +300,6 @@
   },
   {
     "type": "function",
-    "name": "initialize",
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "lock",
     "inputs": [
       {
@@ -617,38 +310,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "lockerOwner",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "lpCooldownTimestamps",
-    "inputs": [
-      {
-        "name": "positionTokenId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "lpCooldownTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -675,38 +336,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "stakingUnlocksAt",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint80",
-        "internalType": "uint80"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "taxFreeExitTimestamps",
-    "inputs": [
-      {
-        "name": "positionTokenId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "taxFreeWithdrawTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -883,18 +512,44 @@
   {
     "type": "event",
     "name": "FluidUnstaked",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "newTotalStakedBalance",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "removedAmount",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "Initialized",
+    "name": "LiquidityPositionBurned",
     "inputs": [
       {
-        "name": "version",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LiquidityPositionCreated",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -936,11 +591,6 @@
   },
   {
     "type": "error",
-    "name": "InvalidInitialization",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "LIQUIDITY_POOL_NOT_APPROVED",
     "inputs": []
   },
@@ -961,11 +611,6 @@
   },
   {
     "type": "error",
-    "name": "MathOverflowedMulDiv",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NOT_LOCKER_OWNER",
     "inputs": []
   },
@@ -981,16 +626,6 @@
   },
   {
     "type": "error",
-    "name": "NotInitializing",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "Reentrancy",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS",
     "inputs": []
   },
@@ -998,22 +633,6 @@
     "type": "error",
     "name": "STAKING_COOLDOWN_NOT_ELAPSED",
     "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "SafeCastOverflowedIntDowncast",
-    "inputs": [
-      {
-        "name": "bits",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "value",
-        "type": "int256",
-        "internalType": "int256"
-      }
-    ]
   },
   {
     "type": "error",

@@ -31,9 +31,27 @@ export function createFluidStakedEvent(
   return fluidStakedEvent
 }
 
-export function createFluidUnstakedEvent(): FluidUnstaked {
+export function createFluidUnstakedEvent(
+  newTotalStakedBalance: BigInt,
+  removedAmount: BigInt
+): FluidUnstaked {
   let fluidUnstakedEvent = changetype<FluidUnstaked>(newMockEvent())
+
   fluidUnstakedEvent.parameters = new Array()
+
+  fluidUnstakedEvent.parameters.push(
+    new ethereum.EventParam(
+      "newTotalStakedBalance",
+      ethereum.Value.fromUnsignedBigInt(newTotalStakedBalance)
+    )
+  )
+  fluidUnstakedEvent.parameters.push(
+    new ethereum.EventParam(
+      "removedAmount",
+      ethereum.Value.fromUnsignedBigInt(removedAmount)
+    )
+  )
+
   return fluidUnstakedEvent
 }
 
