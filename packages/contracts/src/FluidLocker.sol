@@ -366,13 +366,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Update the staked balance
         _stakedBalance -= amountToUnstake;
 
+        uint256 newStakedBalance = _stakedBalance;
+
         // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(newStakedBalance);
 
-        // Disconnect this locker from the Tax Distribution Pool
-        FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
+        if (newStakedBalance == 0) {
+            // Disconnect this locker from the Tax Distribution Pool
+            FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
+        }
 
-        emit FluidUnstaked();
+        emit FluidUnstaked(newStakedBalance, amountToUnstake);
     }
 
     /// @inheritdoc IFluidLocker
