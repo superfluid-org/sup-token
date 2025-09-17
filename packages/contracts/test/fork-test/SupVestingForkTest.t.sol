@@ -35,7 +35,8 @@ contract SupVestingForkTest is Test {
     uint32 internal constant _END_DATE = 1834531200;
 
     // NOTE: To be updated if the input data changes
-    uint256 internal constant _TOTAL_SUPPLY = 317709052 ether + 56597041 ether;
+    // The subtracted amounts are for cancelled schedules
+    uint256 internal constant _TOTAL_SUPPLY = 317709052 ether + 56597041 ether - 31382979 ether + 33472686 ether;
 
     function setUp() public {
         _sup = ISuperToken(0xa69f80524381275A7fFdb3AE01c54150644c8792);
@@ -92,7 +93,7 @@ contract SupVestingForkTest is Test {
         _supVestingFactory.setAdmin(newAdmin);
         vm.stopPrank();
 
-        assertEq(_supVestingFactory.admin(), _treasury, "admin should be new admin");
+        assertEq(_supVestingFactory.admin(), newAdmin, "admin should be new admin");
         
         // Define an array of test data with randomly selected entries from schedules.csv
         VestingTestData[] memory testData = _getTestData();
