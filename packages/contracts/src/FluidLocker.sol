@@ -332,7 +332,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner unlockAvailable {
+    function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner {
         if (amountToStake > getAvailableBalance()) revert INSUFFICIENT_AVAILABLE_BALANCE();
 
         if (!FLUID.isMemberConnected(address(STAKER_DISTRIBUTION_POOL), address(this))) {
@@ -353,7 +353,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unstake(uint256 amountToUnstake) external nonReentrant onlyLockerOwner unlockAvailable {
+    function unstake(uint256 amountToUnstake) external nonReentrant onlyLockerOwner {
         if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
