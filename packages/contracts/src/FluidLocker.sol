@@ -114,7 +114,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period
-    uint80 private constant _STAKING_COOLDOWN_PERIOD = 7 days;
+    uint80 private constant _STAKING_COOLDOWN_PERIOD = 30 days;
 
     /// @notice LP cooldown period
     uint80 private constant _LP_COOLDOWN_PERIOD = 7 days;
@@ -358,25 +358,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
 
-        // Enforce amount to unstake is not greater than the staked balance
-        if (amountToUnstake > _stakedBalance) {
-            revert INSUFFICIENT_STAKED_BALANCE();
-        }
-
-        // Update the staked balance
-        _stakedBalance -= amountToUnstake;
-
-        uint256 newStakedBalance = _stakedBalance;
-
-        // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(newStakedBalance);
-
-        if (newStakedBalance == 0) {
-            // Disconnect this locker from the Tax Distribution Pool
-            FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
-        }
-
-        emit FluidUnstaked(newStakedBalance, amountToUnstake);
+        _unstake(amountToUnstake);
     }
 
     /// @inheritdoc IFluidLocker
@@ -416,9 +398,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
         _pump(weth, ethPumpAmount);
 
-        // Ensure that the locker has enough available balance to provide liquidity
-        if (getAvailableBalance() < supAmount) {
-            revert INSUFFICIENT_AVAILABLE_BALANCE();
+        uint256 availableBalance = getAvailableBalance();
+
+        // Check if the locker has enough available balance to provide desired liquidity
+        if (availableBalance < supAmount) {
+            uint256 shortage = supAmount - availableBalance;
+
+            // If not, check if the locker has enough staked balance to compensate for the shortage
+            if (_stakedBalance < shortage) {
+                revert INSUFFICIENT_AVAILABLE_BALANCE();
+            } else {
+                // Forcefully unstake the shortage amount to provide liquidity (discards the cooldown period)
+                _unstake(shortage);
+            }
         }
 
         // Get the amount of paired asset tokens in the locker
@@ -470,8 +462,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
-
-        // TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
             TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
@@ -637,6 +627,26 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }
 
+    function _unstake(uint256 amountToUnstake) internal {
+        // Enforce amount to unstake is not greater than the staked balance
+        if (amountToUnstake > _stakedBalance) {
+            revert INSUFFICIENT_STAKED_BALANCE();
+        }
+
+        // Update the staked balance
+        _stakedBalance -= amountToUnstake;
+
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
+
+        if (_stakedBalance == 0) {
+            // Disconnect this locker from the Tax Distribution Pool
+            FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
+        }
+
+        emit FluidUnstaked();
+    }
+
     function _disconnectFromPool(uint256 programId) internal {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
@@ -756,22 +766,23 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @notice Decreases liquidity from a Uniswap V3 position
      * @param tokenId The ID of the NFT position to decrease liquidity from
      * @param liquidityToRemove The amount of liquidity to remove from the position (only collect fees if set to 0)
-     * @param pairedAssetAmountToRemove The minimum amount of paired asset to remove from the position
-     * @param supAmountToRemove The minimum amount of $FLUID to remove from the position
+     * @param amount0ToRemove The minimum amount Token0 to remove from the position
+     * @param amount1ToRemove The minimum amount Token1 to remove from the position
      * @return withdrawnPairedAssetAmount The amount of paired asset received from removing liquidity
      * @return withdrawnSupAmount The amount of $FLUID received from removing liquidity
      */
     function _decreasePosition(
         uint256 tokenId,
         uint128 liquidityToRemove,
-        uint256 pairedAssetAmountToRemove,
-        uint256 supAmountToRemove
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
     ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
-        (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
-        bool zeroIsSup = token0 == address(FLUID);
+        // (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
+        // bool zeroIsSup = token0 == address(FLUID);
 
-        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmountToRemove, pairedAssetAmountToRemove);
-        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
+
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
 
         // construct Decrease Liquidity parameters
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
