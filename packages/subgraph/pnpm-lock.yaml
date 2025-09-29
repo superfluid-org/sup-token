@@ -20,7 +20,7 @@ importers:
         version: 13.0.2
       assemblyscript:
         specifier: ^0.28.7
-        version: 0.28.7
+        version: 0.28.8
       matchstick-as:
         specifier: 0.6.0
         version: 0.6.0
@@ -420,8 +420,8 @@ packages:
     engines: {node: '>=16', npm: '>=7'}
     hasBin: true
 
-  assemblyscript@0.28.7:
-    resolution: {integrity: sha512-g8vY1h2c5mPEiqjGnzf4Qzg7cetbFCoJoDYApvOiratiUP6tHrXGJLsLKCxC/AEyRLiLe06Nho8v4gQ41tRQvg==}
+  assemblyscript@0.28.8:
+    resolution: {integrity: sha512-RtnvzuplmvWeOlYLgjb61jE/Uvj0LYxQ8KxfO+ARu2zOH69NNnS4gfSRDSq0CbM1qZw91kVd7QKmGZFxUlfQ8g==}
     engines: {node: '>=20', npm: '>=10'}
     hasBin: true
 
@@ -2135,7 +2135,7 @@ snapshots:
       binaryen: 116.0.0-nightly.20240114
       long: 5.3.2
 
-  assemblyscript@0.28.7:
+  assemblyscript@0.28.8:
     dependencies:
       binaryen: 123.0.0-nightly.20250530
       long: 5.3.2

@@ -1,4 +1,4 @@
-import { BigInt, Address, Bytes } from "@graphprotocol/graph-ts";
+import { BigInt, Address, Bytes, log } from "@graphprotocol/graph-ts";
 import { 
   FluidStreamClaimEvent, 
   ClaimEventUnit, 
@@ -220,7 +220,7 @@ export function handleFluidUnlocked(event: FluidUnlockedEvent): void {
     // Load the locker entity
     const locker = Locker.load(event.address);
     if (locker == null) {
-      console.warn(`Locker ${event.address} not found`);
+      log.warning("Locker {} not found", [event.address.toHexString()]);
       return; // Locker should exist, but handle gracefully
     }
     

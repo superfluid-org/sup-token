@@ -94,9 +94,12 @@ templates:
         - StakingStats
         - LockerStaking
         - StakingEvent
+        - Fontaine
       abis:
         - name: FluidLocker
           file: ./abis/FluidLocker.json
+        - name: Fontaine
+          file: ./abis/Fontaine.json
       eventHandlers:
         - event: FluidStreamClaimed(indexed uint256,indexed uint256)
           handler: handleFluidStreamClaimed
@@ -106,4 +109,6 @@ templates:
           handler: handleFluidStaked
         - event: FluidUnstaked(indexed uint256,indexed uint256)
           handler: handleFluidUnstaked
+        - event: FluidUnlocked(indexed uint128,indexed uint256,address,indexed address)
+          handler: handleFluidUnlocked
       file: ./src/fluid-locker.ts
