@@ -57,7 +57,7 @@ interface IFluidLocker {
     event FluidStaked(uint256 indexed newTotalStakedBalance, uint256 indexed addedAmount);
 
     /// @notice Event emitted when $FLUID are unstaked
-    event FluidUnstaked();
+    event FluidUnstaked(uint256 indexed newTotalStakedBalance, uint256 indexed removedAmount);
 
     /// @notice Event emitted when a liquidity position is created
     event LiquidityPositionCreated(uint256 indexed tokenId);

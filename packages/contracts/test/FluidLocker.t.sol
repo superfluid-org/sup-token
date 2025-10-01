@@ -41,7 +41,7 @@ abstract contract FluidLockerBaseTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 internal constant _TAX_DISTRIBUTION_FLOW_DURATION = 180 days;
-    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 7 days;
+    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 30 days;
     uint80 internal constant _LP_COOLDOWN_PERIOD = 7 days;
 
     ISuperfluidPool[] public programPools;
@@ -1495,10 +1495,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(ethBalanceAfter, ethBalanceBefore + ethAmount, "ETH balance in ALICE walletshould increase");
     }
 
-    function testV2provideLiquidityWhileStaking() external virtual {
+    function testV2provideLiquidityWhileStaking_shortageCompensation() external virtual {
         uint256 fundingAmount = 100e18;
 
         _helperUpgradeLocker();
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked before funding");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available before funding");
 
         // Set up Alice's Locker to be functional
         _helperFundLocker(address(aliceLocker), fundingAmount);
@@ -1508,18 +1511,78 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         //Stake all avaialble tokens
         aliceLocker.stake(fundingAmount);
 
-        //Provide liquidity using the staked tokens (should revert)
-        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
-        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
+        uint256 stakedBalanceBeforeLP = aliceLocker.getStakedBalance();
+        assertEq(stakedBalanceBeforeLP, fundingAmount, "incorrect staked before LP");
+
+        //Provide liquidity using the staked tokens (should forcefully unstake the shortage amount to provide liquidity)
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(fundingAmount);
+
+        uint256 stakedBalanceAfterLP = aliceLocker.getStakedBalance();
+        assertGt(stakedBalanceBeforeLP, stakedBalanceAfterLP, "incorrect staked after LP");
+
+        // Unstake all staked tokens (should revert as cooldown is not elapsed)
+        vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.unstake(stakedBalanceAfterLP);
 
         vm.warp(block.timestamp + _STAKING_COOLDOWN_PERIOD + 1);
+        aliceLocker.unstake(stakedBalanceAfterLP);
 
-        // Unstake all staked tokens
-        aliceLocker.unstake(aliceLocker.getStakedBalance());
-
-        // Provide liquidity using the freshly unstaked tokens
-        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
         vm.stopPrank();
+    }
+
+    function testV2provideLiquidityWhileStaking_noShortageCompensationNeeded() external virtual {
+        uint256 fundingAmount = 200e18;
+        uint256 stakingAmount = 100e18;
+        uint256 lpAmount = 100e18;
+
+        _helperUpgradeLocker();
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked before funding");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available before funding");
+
+        // Set up Alice's Locker to be functional
+        _helperFundLocker(address(aliceLocker), fundingAmount);
+
+        vm.startPrank(ALICE);
+
+        //Stake all avaialble tokens
+        aliceLocker.stake(stakingAmount);
+
+        uint256 stakedBalanceBeforeLP = aliceLocker.getStakedBalance();
+        assertEq(stakedBalanceBeforeLP, stakingAmount, "incorrect staked before LP");
+
+        //Provide liquidity using the staked tokens (should forcefully unstake the shortage amount to provide liquidity)
+        aliceLocker.provideLiquidity{ value: lpAmount / (2 * 9900) }(lpAmount);
+
+        uint256 stakedBalanceAfterLP = aliceLocker.getStakedBalance();
+        assertEq(stakedBalanceBeforeLP, stakedBalanceAfterLP, "incorrect staked after LP");
+
+        vm.stopPrank();
+    }
+
+    function testV2provideLiquidityWhileStaking_notEnoughStakedForShortageCompensation() external virtual {
+        uint256 fundingAmount = 100e18;
+        uint256 lpAmount = 200e18;
+
+        _helperUpgradeLocker();
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked before funding");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available before funding");
+
+        // Set up Alice's Locker to be functional
+        _helperFundLocker(address(aliceLocker), fundingAmount);
+
+        vm.startPrank(ALICE);
+
+        //Stake all avaialble tokens
+        aliceLocker.stake(fundingAmount);
+
+        uint256 stakedBalanceBeforeLP = aliceLocker.getStakedBalance();
+        assertEq(stakedBalanceBeforeLP, fundingAmount, "incorrect staked before LP");
+
+        //Provide liquidity using the staked tokens (should forcefully unstake the shortage amount to provide liquidity)
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(lpAmount);
     }
 
     function _helperUpgradeLocker() internal {
