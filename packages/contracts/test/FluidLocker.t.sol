@@ -234,6 +234,81 @@ contract FluidLockerTest is FluidLockerBaseTest {
         }
     }
 
+    function testClaimAndStake(uint256 units, uint256 amountToStake) external virtual {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+
+        vm.prank(ALICE);
+        aliceLocker.claimAndStake(PROGRAM_0, units, nonce, signature);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
+
+        assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+        assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
+
+        int96 distributionFlowrate = _helperDistributeToProgramPool(PROGRAM_0, 1_000_000e18, _MAX_UNLOCK_PERIOD);
+
+        assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
+    }
+
+    function testClaimAndStakeBatch(uint256 units, uint256 amountToStake) external virtual {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        uint256[] memory programIds = new uint256[](3);
+        uint256[] memory newUnits = new uint256[](3);
+
+        uint256 nonce;
+        bytes memory signature;
+
+        uint256[] memory distributionAmounts = new uint256[](3);
+        uint256[] memory distributionPeriods = new uint256[](3);
+
+        for (uint8 i = 0; i < 3; ++i) {
+            programIds[i] = i + 1;
+            newUnits[i] = units;
+            nonce = _programManager.getNextValidNonce(programIds[i], ALICE) > nonce
+                ? _programManager.getNextValidNonce(programIds[i], ALICE)
+                : nonce;
+            distributionAmounts[i] = 1_000_000e18;
+            distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
+        }
+
+        signature = _helperGenerateBatchSignature(signerPkey, ALICE, newUnits, programIds, nonce);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+
+        vm.prank(ALICE);
+        aliceLocker.claimAndStake(programIds, newUnits, nonce, signature);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
+
+        int96[] memory distributionFlowrates =
+            _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
+
+        uint128[] memory unitsPerProgram = aliceLocker.getUnitsPerProgram(programIds);
+        int96[] memory flowratePerProgram = aliceLocker.getFlowRatePerProgram(programIds);
+
+        for (uint8 i = 0; i < 3; ++i) {
+            assertEq(newUnits[i], programPools[i].getUnits(address(aliceLocker)), "incorrect units amounts");
+            assertEq(newUnits[i], unitsPerProgram[i], "getUnitsPerProgram invalid");
+            assertEq(distributionFlowrates[i], flowratePerProgram[i], "getFlowRatePerProgram invalid");
+        }
+    }
+
     function testConnectToPool(uint256 units) external virtual {
         units = bound(units, 1, 1_000_000);
 
@@ -769,6 +844,85 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         vm.prank(ALICE);
         aliceLocker.claim(programIds, newUnits, nonce, signature);
+
+        int96[] memory distributionFlowrates =
+            _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
+
+        uint128[] memory unitsPerProgram = aliceLocker.getUnitsPerProgram(programIds);
+        int96[] memory flowratePerProgram = aliceLocker.getFlowRatePerProgram(programIds);
+
+        for (uint8 i = 0; i < 3; ++i) {
+            assertEq(newUnits[i], programPools[i].getUnits(address(aliceLocker)), "incorrect units amounts");
+            assertEq(newUnits[i], unitsPerProgram[i], "getUnitsPerProgram invalid");
+            assertEq(distributionFlowrates[i], flowratePerProgram[i], "getFlowRatePerProgram invalid");
+        }
+    }
+
+    function testClaimAndStake(uint256 units, uint256 amountToStake) external virtual {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+
+        _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        aliceLocker.claimAndStake(PROGRAM_0, units, nonce, signature);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
+
+        assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+        assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
+
+        int96 distributionFlowrate = _helperDistributeToProgramPool(PROGRAM_0, 1_000_000e18, _MAX_UNLOCK_PERIOD);
+
+        assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
+    }
+
+    function testClaimAndStakeBatch(uint256 units, uint256 amountToStake) external virtual {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        uint256[] memory programIds = new uint256[](3);
+        uint256[] memory newUnits = new uint256[](3);
+
+        uint256 nonce;
+        bytes memory signature;
+
+        uint256[] memory distributionAmounts = new uint256[](3);
+        uint256[] memory distributionPeriods = new uint256[](3);
+
+        for (uint8 i = 0; i < 3; ++i) {
+            programIds[i] = i + 1;
+            newUnits[i] = units;
+            nonce = _programManager.getNextValidNonce(programIds[i], ALICE) > nonce
+                ? _programManager.getNextValidNonce(programIds[i], ALICE)
+                : nonce;
+            distributionAmounts[i] = 1_000_000e18;
+            distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
+        }
+
+        signature = _helperGenerateBatchSignature(signerPkey, ALICE, newUnits, programIds, nonce);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+
+        _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        aliceLocker.claimAndStake(programIds, newUnits, nonce, signature);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
 
         int96[] memory distributionFlowrates =
             _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
