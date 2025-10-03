@@ -522,6 +522,22 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
     }
 
+    /// @inheritdoc IFluidLocker
+    function disconnectAndClaimAndStake(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external nonReentrant onlyLockerOwner {
+        for (uint256 i; i < programIdsToDisconnect.length; ++i) {
+            _disconnectFromPool(programIdsToDisconnect[i]);
+        }
+
+        _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
+        _stake(getAvailableBalance());
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

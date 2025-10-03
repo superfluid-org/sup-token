@@ -278,6 +278,23 @@ interface IFluidLocker {
         bytes memory stackSignature
     ) external;
 
+    /**
+     * @notice Helper function which combines batched disconnectFromPool, claim and stake into one call.
+     * @dev Only this Locker owner can call this function
+     * @param programIdsToDisconnect array of program identifiers corresponding to the pools to disconnect from
+     * @param programIdsToClaim array of program identifiers corresponding to the pools to claim units from
+     * @param totalProgramUnits array of total program units to claim
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
+     */
+    function disconnectAndClaimAndStake(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

@@ -19,7 +19,6 @@ import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockA
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
-import { Fontaine } from "../src/Fontaine.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
@@ -467,6 +466,87 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
         vm.prank(ALICE);
         aliceLocker.disconnectAndClaim(programIdsToDisconnect, programIdsToClaim, totalProgramUnits, nonce2, signature2);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[2]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+    }
+
+    function testDisconnectAndClaimAndStake(uint256 units, uint256 amountToStake) external virtual {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        uint256 nonce0 = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature0 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce0);
+        uint256 nonce1 = _programManager.getNextValidNonce(PROGRAM_1, ALICE);
+        bytes memory signature1 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_1, nonce1);
+        uint256 nonce2 = _programManager.getNextValidNonce(PROGRAM_2, ALICE);
+        bytes memory signature2 = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_2, nonce2);
+
+        vm.prank(ALICE);
+        aliceLocker.claim(PROGRAM_0, units, nonce0, signature0);
+        aliceLocker.claim(PROGRAM_1, units, nonce1, signature1);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[1]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[2]), address(aliceLocker)),
+            false,
+            "Locker should be not be connected to pool"
+        );
+
+        uint256[] memory programIdsToDisconnect = new uint256[](2);
+        programIdsToDisconnect[0] = PROGRAM_0;
+        programIdsToDisconnect[1] = PROGRAM_1;
+
+        uint256[] memory programIdsToClaim = new uint256[](1);
+        programIdsToClaim[0] = PROGRAM_2;
+
+        uint256[] memory totalProgramUnits = new uint256[](1);
+        totalProgramUnits[0] = units;
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.disconnectAndClaimAndStake(
+            programIdsToDisconnect, programIdsToClaim, totalProgramUnits, nonce2, signature2
+        );
+
+        vm.prank(ALICE);
+        aliceLocker.disconnectAndClaimAndStake(
+            programIdsToDisconnect, programIdsToClaim, totalProgramUnits, nonce2, signature2
+        );
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
 
         assertEq(
             _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
