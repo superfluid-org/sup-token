@@ -57,6 +57,62 @@
   },
   {
     "type": "function",
+    "name": "claimAndStake",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimAndStake",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "collectFees",
     "inputs": [
       {
@@ -121,6 +177,39 @@
   {
     "type": "function",
     "name": "disconnectAndClaim",
+    "inputs": [
+      {
+        "name": "programIdsToDisconnect",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "programIdsToClaim",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disconnectAndClaimAndStake",
     "inputs": [
       {
         "name": "programIdsToDisconnect",
