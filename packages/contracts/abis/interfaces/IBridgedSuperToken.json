@@ -27,19 +27,6 @@
   },
   {
     "type": "function",
-    "name": "POOL_MEMBER_NFT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IPoolMemberNFT"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "allowance",
     "inputs": [
       {
@@ -2041,19 +2028,6 @@
         "type": "address",
         "indexed": true,
         "internalType": "contract IPoolAdminNFT"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PoolMemberNFTCreated",
-    "inputs": [
-      {
-        "name": "poolMemberNFT",
-        "type": "address",
-        "indexed": true,
-        "internalType": "contract IPoolMemberNFT"
       }
     ],
     "anonymous": false
