@@ -138,7 +138,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     INonfungiblePositionManager public immutable NONFUNGIBLE_POSITION_MANAGER;
 
     /// @notice ETHx/SUP Uniswap V3 Pool interface
-    IUniswapV3Pool public immutable ETHx_SUP_POOL;
+    IUniswapV3Pool public immutable ETH_SUP_POOL;
 
     /// @notice Pump percentage (expressed in basis points)
     uint256 public constant BP_PUMP_RATIO = 100; // 1%
@@ -236,7 +236,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         SWAP_ROUTER = swapRouter;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
-        ETHx_SUP_POOL = ethSupPool;
+        ETH_SUP_POOL = ethSupPool;
     }
 
     /**
@@ -386,7 +386,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner unlockAvailable {
-        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
+        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
 
         uint256 ethAmount = msg.value;
 
@@ -451,7 +451,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Collect the fees
         _collect(tokenId, lockerOwner);
 
-        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
+        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
 
@@ -487,7 +487,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
-        if (ETHx_SUP_POOL.token0() == address(FLUID)) {
+        if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
             (collectedSup, collectedWeth) = _collect(tokenId, lockerOwner);
         } else {
@@ -498,7 +498,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function withdrawDustETH() external onlyLockerOwner {
-        address ethx = ETHx_SUP_POOL.token0() == address(FLUID) ? ETHx_SUP_POOL.token1() : ETHx_SUP_POOL.token0();
+        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
 
         uint256 ethxBalance = ISETH(ethx).balanceOf(address(this));
 
@@ -648,15 +648,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Update the staked balance
         _stakedBalance -= amountToUnstake;
 
-        // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
+        uint256 newStakedBalance = _stakedBalance;
 
-        if (_stakedBalance == 0) {
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(newStakedBalance);
+
+        if (newStakedBalance == 0) {
             // Disconnect this locker from the Tax Distribution Pool
             FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
         }
 
-        emit FluidUnstaked();
+        emit FluidUnstaked(newStakedBalance, amountToUnstake);
     }
 
     function _disconnectFromPool(uint256 programId) internal {
@@ -725,7 +727,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: ethx,
             tokenOut: address(FLUID),
-            fee: ETHx_SUP_POOL.fee(),
+            fee: ETH_SUP_POOL.fee(),
             recipient: address(this),
             amountIn: ethAmount,
             amountOutMinimum: 0,
@@ -747,7 +749,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         internal
         returns (uint256 positionTokenId, uint256 depositedEthAmount, uint256 depositedSupAmount)
     {
-        bool zeroIsSup = ETHx_SUP_POOL.token0() == address(FLUID);
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
         INonfungiblePositionManager.MintParams memory mintParams = _formatMintParams(zeroIsSup, ethAmount, supAmount);
 
@@ -846,12 +848,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
-        int24 tickSpacing = ETHx_SUP_POOL.tickSpacing();
+        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
 
         mintParams = INonfungiblePositionManager.MintParams({
-            token0: ETHx_SUP_POOL.token0(),
-            token1: ETHx_SUP_POOL.token1(),
-            fee: ETHx_SUP_POOL.fee(),
+            token0: ETH_SUP_POOL.token0(),
+            token1: ETH_SUP_POOL.token1(),
+            fee: ETH_SUP_POOL.fee(),
             tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
             tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
             amount0Desired: amount0,
