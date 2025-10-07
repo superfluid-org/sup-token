@@ -27,7 +27,7 @@ LOCKER_BEACON_ADDRESS=0xf2880c6D68080393C1784f978417a96ab4f37c38 \
 STAKING_REWARD_CONTROLLER_ADDRESS=0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018 \
 SUP_ADDRESS=0xFd62b398DD8a233ad37156690631fb9515059d6A \
 PAUSE_FACTORY_LOCKER_CREATION=false \
-forge script script/upgrades/deploy-tte.s.sol:DeployTTE_PART_I --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+forge script script/upgrades/deploy-sip8.s.sol:DeploySIP8_PART_I --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 
 PART_II :
