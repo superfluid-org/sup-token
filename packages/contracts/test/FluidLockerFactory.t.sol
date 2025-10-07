@@ -22,22 +22,21 @@ contract FluidLockerFactoryTest is SFTest {
         _fluidLockerFactory.setLockerCreationFee(LOCKER_CREATION_FEE);
     }
 
-    function testCreateLockerContract(address _user, uint256 _invalidFee) external {
-        vm.assume(_user != address(0));
+    function testCreateLockerContract(uint256 _invalidFee) external {
         vm.assume(_invalidFee != LOCKER_CREATION_FEE);
 
-        vm.deal(_user, type(uint256).max);
+        vm.deal(CAROL, type(uint256).max);
 
-        vm.startPrank(_user);
+        vm.startPrank(CAROL);
 
         vm.expectRevert(IFluidLockerFactory.INVALID_FEE.selector);
         _fluidLockerFactory.createLockerContract{ value: _invalidFee }();
 
-        assertEq(_fluidLockerFactory.getLockerAddress(_user), address(0), "locker should not exists");
+        assertEq(_fluidLockerFactory.getLockerAddress(CAROL), address(0), "locker should not exists");
 
         address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
 
-        assertEq(_fluidLockerFactory.getLockerAddress(_user), userLockerAddress, "locker should exists");
+        assertEq(_fluidLockerFactory.getLockerAddress(CAROL), userLockerAddress, "locker should exists");
         assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
 
         vm.expectRevert();
