@@ -57,9 +57,6 @@ interface IFluidLockerFactory {
     /// @notice Error thrown when the attempting to perform a governance protected operation
     error NOT_GOVERNOR();
 
-    /// @notice Error thrown when the attempting to create a locker while the correct fee is not sent
-    error INVALID_FEE();
-
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -70,14 +67,14 @@ interface IFluidLockerFactory {
      * @notice Deploy a Locker for the caller
      * @return lockerInstance Deployed Locker contract address
      */
-    function createLockerContract() external payable returns (address lockerInstance);
+    function createLockerContract() external returns (address lockerInstance);
 
     /**
      * @notice Deploy a Locker for the given user
      * @param user User address to be associated with the Locker
      * @return lockerInstance Deployed Locker contract address
      */
-    function createLockerContract(address user) external payable returns (address lockerInstance);
+    function createLockerContract(address user) external returns (address lockerInstance);
 
     /**
      * @notice Upgrade this proxy logic
@@ -93,19 +90,6 @@ interface IFluidLockerFactory {
      * @param newGovernor new governor address
      */
     function setGovernor(address newGovernor) external;
-
-    /**
-     * @notice Sets the locker creation fee
-     * @dev Only the governor address can perform this operation
-     * @param newLockerCreationFee new locker creation fee
-     */
-    function setLockerCreationFee(uint256 newLockerCreationFee) external;
-
-    /**
-     * @notice Withdraws the ETH balance of the factory
-     * @dev Only the governor address can perform this operation
-     */
-    function withdrawETH() external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

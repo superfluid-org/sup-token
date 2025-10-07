@@ -72,9 +72,6 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @notice Stores the locker address of a given user address
     mapping(address user => address locker) private _lockers;
 
-    /// @notice Locker creation fee
-    uint256 public lockerCreationFee;
-
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -116,18 +113,12 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
-    function createLockerContract() external payable notPaused returns (address lockerInstance) {
-        // Ensure the correct fee is sent
-        if (msg.value != lockerCreationFee) revert INVALID_FEE();
-
+    function createLockerContract() external notPaused returns (address lockerInstance) {
         lockerInstance = _createLockerContract(msg.sender);
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function createLockerContract(address user) external payable notPaused returns (address lockerInstance) {
-        // Ensure the correct fee is sent
-        if (msg.value != lockerCreationFee) revert INVALID_FEE();
-
+    function createLockerContract(address user) external notPaused returns (address lockerInstance) {
         lockerInstance = _createLockerContract(user);
     }
 
@@ -140,16 +131,6 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     function setGovernor(address newGovernor) external onlyGovernor {
         governor = newGovernor;
         emit GovernorUpdated(newGovernor);
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function setLockerCreationFee(uint256 newLockerCreationFee) external onlyGovernor {
-        lockerCreationFee = newLockerCreationFee;
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function withdrawETH() external onlyGovernor {
-        payable(governor).transfer(address(this).balance);
     }
 
     //   _    ___                 ______                 __  _
