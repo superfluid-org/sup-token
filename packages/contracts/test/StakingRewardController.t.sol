@@ -14,7 +14,6 @@ import { StakingRewardController, IStakingRewardController } from "../src/Stakin
 using SuperTokenV1Library for ISuperToken;
 
 contract StakingRewardControllerTest is SFTest {
-
     function setUp() public override {
         super.setUp();
     }
@@ -22,6 +21,7 @@ contract StakingRewardControllerTest is SFTest {
     function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
         vm.assume(caller != address(0));
         vm.assume(caller != address(_stakingRewardController.taxDistributionPool()));
+        vm.assume(caller != address(_stakingRewardController.lpDistributionPool()));
         stakingAmount = bound(stakingAmount, 1e18, 10_000_000e18);
 
         vm.prank(caller);
