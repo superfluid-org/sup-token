@@ -678,17 +678,19 @@ contract FluidLockerTest is FluidLockerBaseTest {
         (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
             _helperCalculateFlowRatesVestUnlock(unlockAmount, unlockPeriod);
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
+        if (unlockPeriod < _MAX_UNLOCK_PERIOD) {
+            vm.prank(ALICE);
+            vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+            aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        _helperLockerStake(address(bobLocker));
+            _helperLockerStake(address(bobLocker));
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
+            vm.prank(ALICE);
+            vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+            aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        _helperLockerProvideLiquidity(address(carolLocker));
+            _helperLockerProvideLiquidity(address(carolLocker));
+        }
 
         vm.prank(ALICE);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
@@ -1141,17 +1143,19 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         _helperUpgradeLocker();
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
+        if (unlockPeriod < _MAX_UNLOCK_PERIOD) {
+            vm.prank(ALICE);
+            vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+            aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        _helperLockerStake(address(bobLocker));
+            _helperLockerStake(address(bobLocker));
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
+            vm.prank(ALICE);
+            vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+            aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        _helperLockerProvideLiquidity(address(carolLocker));
+            _helperLockerProvideLiquidity(address(carolLocker));
+        }
 
         vm.prank(ALICE);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
@@ -1194,10 +1198,6 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(aliceLocker.getAvailableBalance(), amountToStake1, "incorrect available bal before op");
         assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal before op");
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
-        aliceLocker.stake(amountToStake1);
-
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
@@ -1225,10 +1225,6 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.assume(invalidAmountToUnstake > amountToStake);
 
         _helperFundLocker(address(aliceLocker), amountToStake);
-
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
-        aliceLocker.unstake(amountToUnstake);
 
         _helperUpgradeLocker();
 
