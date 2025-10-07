@@ -85,7 +85,7 @@ contract SFTest is Test {
     IUniswapV3Pool internal _pool;
 
     function setUp() public virtual {
-        vm.createSelectFork(vm.envString("BASE_MAINNET_RPC_URL"), 28109090);
+        vm.createSelectFork(vm.envString("BASE_MAINNET_RPC_URL"), 36486000);
 
         _ethx = ISETH(0x46fd5cfB4c12D87acD3a13e92BAa53240C661D93);
 
@@ -139,9 +139,12 @@ contract SFTest is Test {
         uint256 amount0 = _pool.token0() == address(_ethx) ? ethxAmountToDeposit : supAmountToDeposit;
         uint256 amount1 = _pool.token1() == address(_ethx) ? ethxAmountToDeposit : supAmountToDeposit;
 
+        vm.label(address(_ethx), "ETHx");
+        vm.label(address(_fluidSuperToken), "SUP");
+
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
-            token0: address(_ethx),
-            token1: address(_fluidSuperToken),
+            token0: _pool.token0(),
+            token1: _pool.token1(),
             fee: POOL_FEE,
             tickLower: (_MIN_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
             tickUpper: (_MAX_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
