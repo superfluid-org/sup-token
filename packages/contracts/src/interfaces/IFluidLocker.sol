@@ -152,20 +152,28 @@ interface IFluidLocker {
     ) external;
 
     /**
-     * @notice Lock a given `amount` of FLUID Token in this Locker
-     * @dev Requires preliminary token approval
-     * @param amount amount of FLUID Token to lock
+     * @notice Update this locker units within the given program identifier's GDA pool and stake all available SUP Tokens
+     * @param programId program identifier corresponding to the unit update
+     * @param totalProgramUnits new total amount of units
+     * @param nonce nonce associated to the signature provided by Stack
+     * @param stackSignature stack signature containing necessary info to update units
      */
-    function lock(uint256 amount) external;
+    function claimAndStake(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+        external;
 
     /**
-     * @notice Unlock the available FLUID Token from this locker
-     * @dev Only this Locker owner can call this function
-     * @param unlockAmount the amount of FLUID Token to unlock
-     * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
-     * @param recipient account to receive the unlocked FLUID tokens
+     * @notice Batch update this locker units within the given programs identifier's GDA pools and stake all available SUP Tokens
+     * @param programIds array of program identifiers corresponding to the unit update
+     * @param totalProgramUnits array new total amount of units
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
      */
-    function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient) external;
+    function claimAndStake(
+        uint256[] memory programIds,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker
@@ -180,6 +188,22 @@ interface IFluidLocker {
      * @param amountToUnstake amount of FLUID Token to unstake
      */
     function unstake(uint256 amountToUnstake) external;
+
+    /**
+     * @notice Lock a given `amount` of FLUID Token in this Locker
+     * @dev Requires preliminary token approval
+     * @param amount amount of FLUID Token to lock
+     */
+    function lock(uint256 amount) external;
+
+    /**
+     * @notice Unlock the available FLUID Token from this locker
+     * @dev Only this Locker owner can call this function
+     * @param unlockAmount the amount of FLUID Token to unlock
+     * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
+     * @param recipient account to receive the unlocked FLUID tokens
+     */
+    function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient) external;
 
     /**
      * @notice Provides liquidity to a liquidity pool by creating or increasing a position
@@ -247,6 +271,23 @@ interface IFluidLocker {
      * @param stackSignature Single signature containing necessary info to update all units in the batch
      */
     function disconnectAndClaim(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
+
+    /**
+     * @notice Helper function which combines batched disconnectFromPool, claim and stake into one call.
+     * @dev Only this Locker owner can call this function
+     * @param programIdsToDisconnect array of program identifiers corresponding to the pools to disconnect from
+     * @param programIdsToClaim array of program identifiers corresponding to the pools to claim units from
+     * @param totalProgramUnits array of total program units to claim
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
+     */
+    function disconnectAndClaimAndStake(
         uint256[] memory programIdsToDisconnect,
         uint256[] memory programIdsToClaim,
         uint256[] memory totalProgramUnits,

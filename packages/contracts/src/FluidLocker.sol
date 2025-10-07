@@ -276,6 +276,41 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
+    function claimAndStake(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+        external
+        nonReentrant
+        onlyLockerOwner
+    {
+        _claim(programId, totalProgramUnits, nonce, stackSignature);
+        _stake(getAvailableBalance());
+    }
+
+    /// @inheritdoc IFluidLocker
+    function claimAndStake(
+        uint256[] memory programIds,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external nonReentrant onlyLockerOwner {
+        _claimBatch(programIds, totalProgramUnits, nonce, stackSignature);
+        _stake(getAvailableBalance());
+    }
+
+    /// @inheritdoc IFluidLocker
+    function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner {
+        _stake(amountToStake);
+    }
+
+    /// @inheritdoc IFluidLocker
+    function unstake(uint256 amountToUnstake) external nonReentrant onlyLockerOwner {
+        if (block.timestamp < stakingUnlocksAt) {
+            revert STAKING_COOLDOWN_NOT_ELAPSED();
+        }
+
+        _unstake(amountToUnstake);
+    }
+
+    /// @inheritdoc IFluidLocker
     function lock(uint256 amount) external nonReentrant {
         // Fetch the amount of FLUID Token to be locked from the caller
         FLUID.transferFrom(msg.sender, address(this), amount);
@@ -329,36 +364,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         } else {
             _vestUnlock(unlockAmount, unlockPeriod, recipient);
         }
-    }
-
-    /// @inheritdoc IFluidLocker
-    function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner unlockAvailable {
-        if (amountToStake > getAvailableBalance()) revert INSUFFICIENT_AVAILABLE_BALANCE();
-
-        if (!FLUID.isMemberConnected(address(STAKER_DISTRIBUTION_POOL), address(this))) {
-            // Connect this locker to the Tax Distribution Pool
-            FLUID.connectPool(STAKER_DISTRIBUTION_POOL);
-        }
-
-        // Update staked balance
-        _stakedBalance += amountToStake;
-
-        // Update unlock timestamp
-        stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
-
-        // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
-
-        emit FluidStaked(_stakedBalance, amountToStake);
-    }
-
-    /// @inheritdoc IFluidLocker
-    function unstake(uint256 amountToUnstake) external nonReentrant onlyLockerOwner unlockAvailable {
-        if (block.timestamp < stakingUnlocksAt) {
-            revert STAKING_COOLDOWN_NOT_ELAPSED();
-        }
-
-        _unstake(amountToUnstake);
     }
 
     /// @inheritdoc IFluidLocker
@@ -529,6 +534,22 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
     }
 
+    /// @inheritdoc IFluidLocker
+    function disconnectAndClaimAndStake(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external nonReentrant onlyLockerOwner {
+        for (uint256 i; i < programIdsToDisconnect.length; ++i) {
+            _disconnectFromPool(programIdsToDisconnect[i]);
+        }
+
+        _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
+        _stake(getAvailableBalance());
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -637,6 +658,26 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
+    }
+
+    function _stake(uint256 amountToStake) internal {
+        if (amountToStake > getAvailableBalance()) revert INSUFFICIENT_AVAILABLE_BALANCE();
+
+        if (!FLUID.isMemberConnected(address(STAKER_DISTRIBUTION_POOL), address(this))) {
+            // Connect this locker to the Tax Distribution Pool
+            FLUID.connectPool(STAKER_DISTRIBUTION_POOL);
+        }
+
+        // Update staked balance
+        _stakedBalance += amountToStake;
+
+        // Update unlock timestamp
+        stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
+
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
+
+        emit FluidStaked(_stakedBalance, amountToStake);
     }
 
     function _unstake(uint256 amountToUnstake) internal {
