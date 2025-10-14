@@ -225,3 +225,44 @@ type StakingEvent @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type Fontaine @entity(immutable: true) {
+  """
+  The address of the deployed Fontaine contract.
+  """
+  id: Bytes!
+
+  """
+  The locker contract that created this Fontaine.
+  """
+  locker: Locker!
+
+  """
+  The recipient address that will receive the unlocked tokens.
+  """
+  recipient: Bytes!
+
+  """
+  The unlock period in seconds.
+  """
+  unlockPeriod: BigInt!
+
+  """
+  The total amount being unlocked.
+  """
+  unlockAmount: BigInt!
+
+  """
+  The flow rate for the unlock stream.
+  """
+  unlockFlowRate: BigInt!
+
+  """
+  The date at which the unlock is completed.
+  """
+  endDate: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
