@@ -8,18 +8,19 @@
     "build": "graph build",
     "build:base": "npm run prepare:base && npm run codegen && npm run build",
     "build:base-sepolia": "npm run prepare:base-sepolia && npm run codegen && npm run build",
-    "deploy:base": "npm run build:base && pnpm exec goldsky subgraph deploy sup/$npm_package_version --path ./build",
-    "tag:base": "pnpm exec goldsky subgraph tag create sup/$npm_package_version --tag prod",
-    "deploy:base-sepolia": "npm run build:base-sepolia && pnpm exec goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
-    "tag:base-sepolia": "pnpm exec goldsky subgraph tag create sup_test/$npm_package_version --tag prod",
+    "deploy:goldsky:base": "npm run build:base && pnpm exec goldsky subgraph deploy sup/$npm_package_version --path ./build",
+    "tag:goldsky:base": "pnpm exec goldsky subgraph tag create sup/$npm_package_version --tag prod",
+    "deploy:goldsky:base-sepolia": "npm run build:base-sepolia && pnpm exec goldsky subgraph deploy sup_test/$npm_package_version --path ./build",
+    "tag:goldsky:base-sepolia": "pnpm exec goldsky subgraph tag create sup_test/$npm_package_version --tag prod",
+    "deploy:graph:base": "npm run build:base && pnpm exec graph deploy superfluid-sup --deploy-key $GRAPH_DEPLOY_KEY --version-label $npm_package_version",
     "create-local": "graph create --node http://localhost:8020/ locker-system---base-sepolia",
     "remove-local": "graph remove --node http://localhost:8020/ locker-system---base-sepolia",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 locker-system---base-sepolia",
     "test": "graph test"
   },
   "dependencies": {
-    "@graphprotocol/graph-cli": "0.97.1",
-    "@graphprotocol/graph-ts": "0.38.1"
+    "@graphprotocol/graph-cli": "0.98.0",
+    "@graphprotocol/graph-ts": "0.38.2"
   },
   "devDependencies": {
     "@goldskycom/cli": "^13.0.2",
