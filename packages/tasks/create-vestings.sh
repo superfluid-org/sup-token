@@ -11,6 +11,11 @@ filename=$1
 # - MODE (optional): SIMULATE (default), TESTING, EXECUTE.
 #        in TESTING mode, env var ADMIN_ADDR must be set
 
+# Optional env var overrides:
+# - CLIFF_DATE: override cliffDate (unix seconds)
+# - END_DATE: override endDate (unix seconds)
+# - CLIFF_AMOUNT: override cliffAmount (wei)
+
 MODE=${MODE:-"SIMULATE"}
 
 # check chain id of 
@@ -62,11 +67,12 @@ tail -n +2 $filename | while IFS=$'\t' read -r type recipient tokens category cl
 
   # Assume 18 decimals
   amount=$(echo "scale=0; $tokens * 10^18" | bc)
-  cliffAmount=$(echo "scale=0; $amount / 3" | bc)
+  defaultCliffAmount=$(echo "scale=0; $amount / 3" | bc)
 
-  # cliffDate and endDate
-  cliffDate=$DEFAULT_CLIFFDATE
-  endDate=$DEFAULT_ENDDATE
+  # Dates and amounts with optional env var overrides
+  cliffDate=${CLIFF_DATE:-$DEFAULT_CLIFFDATE}
+  endDate=${END_DATE:-$DEFAULT_ENDDATE}
+  cliffAmount=${CLIFF_AMOUNT:-$defaultCliffAmount}
 
   # Calldata
   calldata=$(cast calldata "createSupVestingContract(address,uint256,uint256,uint256,uint32,uint32)" "$recipientAddr" "$index" "$amount" "$cliffAmount" "$cliffDate" "$endDate")

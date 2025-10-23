@@ -11,3 +11,5 @@ lcov.info
 
 # Dotenv file
 .env
+
+logs/
