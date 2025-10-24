@@ -302,7 +302,7 @@ contract SFTest is Test {
         returns (uint256 positionTokenId)
     {
         _helperFundLocker(locker, supAmount);
-        vm.startPrank(FluidLocker(payable(locker)).lockerOwner());
+        vm.startPrank(FluidLocker(payable(locker)).owner());
         FluidLocker(payable(locker)).provideLiquidity{ value: wethAmount }(supAmount);
         vm.stopPrank();
 
@@ -322,7 +322,7 @@ contract SFTest is Test {
         uint256 wethAmountToRemove,
         uint256 supAmountToRemove
     ) internal {
-        vm.startPrank(FluidLocker(payable(locker)).lockerOwner());
+        vm.startPrank(FluidLocker(payable(locker)).owner());
         FluidLocker(payable(locker)).withdrawLiquidity(
             tokenId, liquidityToRemove, wethAmountToRemove, supAmountToRemove
         );
@@ -341,12 +341,12 @@ contract SFTest is Test {
 
     function _helperLockerStake(address locker) internal {
         _helperFundLocker(locker, 10_000e18);
-        vm.prank(FluidLocker(payable(locker)).lockerOwner());
+        vm.prank(FluidLocker(payable(locker)).owner());
         FluidLocker(payable(locker)).stake(10_000e18);
     }
 
     function _helperLockerUnstake(address locker) internal {
-        vm.prank(FluidLocker(payable(locker)).lockerOwner());
+        vm.prank(FluidLocker(payable(locker)).owner());
         FluidLocker(payable(locker)).unstake(10_000e18);
     }
 }

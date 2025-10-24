@@ -162,7 +162,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  /____/\__/\__,_/\__/\___/____/
 
     /// @notice This locker owner address
-    address public lockerOwner;
+    address public owner;
 
     /// @notice Timestamp at which the staking cooldown period is elapsed
     uint80 public stakingUnlocksAt;
@@ -241,11 +241,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /**
      * @notice Locker contract initializer
-     * @param owner this Locker contract owner account
+     * @param lockerOwner this Locker contract owner account
      */
-    function initialize(address owner) external initializer {
+    function initialize(address lockerOwner) external initializer {
         // Sets the owner of this locker
-        lockerOwner = owner;
+        owner = lockerOwner;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -454,7 +454,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Collect the fees
-        _collect(tokenId, lockerOwner);
+        _collect(tokenId, owner);
 
         address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
 
@@ -466,10 +466,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         ISETH(ethx).downgradeToETH(IERC20(ethx).balanceOf(address(this)));
 
         // Transfer ETH to the locker owner
-        TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+        TransferHelper.safeTransferETH(owner, address(this).balance);
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
-            TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
+            TransferHelper.safeTransfer(address(FLUID), owner, withdrawnSup);
         }
 
         // Burn the position and delete position tokenId if all liquidity is removed
@@ -494,10 +494,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
-            (collectedSup, collectedWeth) = _collect(tokenId, lockerOwner);
+            (collectedSup, collectedWeth) = _collect(tokenId, owner);
         } else {
             // Collect the fees
-            (collectedWeth, collectedSup) = _collect(tokenId, lockerOwner);
+            (collectedWeth, collectedSup) = _collect(tokenId, owner);
         }
     }
 
@@ -515,7 +515,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 ethBalance = address(this).balance;
         if (ethBalance > 0) {
             // Transfer ETH to the locker owner
-            TransferHelper.safeTransferETH(lockerOwner, ethBalance);
+            TransferHelper.safeTransferETH(owner, ethBalance);
         }
     }
 
@@ -639,7 +639,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         _connectToPool(programId);
 
         // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
+        EP_PROGRAM_MANAGER.updateUserUnits(owner, programId, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
     }
@@ -655,7 +655,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
+        EP_PROGRAM_MANAGER.batchUpdateUserUnits(owner, programIds, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }
@@ -988,7 +988,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @dev Throws if called by any account other than the owner
      */
     modifier onlyLockerOwner() {
-        if (msg.sender != lockerOwner) revert NOT_LOCKER_OWNER();
+        if (msg.sender != owner) revert NOT_LOCKER_OWNER();
         _;
     }
 
