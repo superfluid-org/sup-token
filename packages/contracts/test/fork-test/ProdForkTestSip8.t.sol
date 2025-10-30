@@ -270,7 +270,8 @@ contract ProdForkTestSip8 is Test {
                 false, // unlock is not available
                 _nonfungiblePositionManager,
                 IUniswapV3Pool(address(0)),
-                _swapRouter
+                _swapRouter,
+                _DAO_MULTISIG
             )
         );
         vm.stopPrank();
