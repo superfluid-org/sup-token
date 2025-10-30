@@ -24,7 +24,7 @@
 //                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //                      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import { IBridgedSuperToken, IXERC20 } from "./IBridgedSuperToken.sol";
 import { IOptimismMintableERC20 } from "./IOptimismMintableERC20.sol";
