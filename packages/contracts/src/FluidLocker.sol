@@ -38,10 +38,10 @@ import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 /* Superfluid Protocol Contracts & Interfaces */
 import {
     ISuperfluidPool,
-    ISuperToken
+    ISuperToken,
+    ISETH
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
-import { ISETH } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/tokens/ISETH.sol";
 
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
@@ -390,13 +390,21 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner unlockAvailable {
-        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
+    function provideLiquidity(uint256 supAmount)
+        external
+        payable
+        nonReentrant
+        onlyLockerOwner
+        unlockAvailable
+        returns (uint256 positionTokenId)
+    {
+        ISETH ethx =
+            ETH_SUP_POOL.token0() == address(FLUID) ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
 
         uint256 ethAmount = msg.value;
 
         // Upgrade ETH to ETHx
-        ISETH(ethx).upgradeByETH{ value: ethAmount }();
+        ethx.upgradeByETH{ value: ethAmount }();
 
         uint256 ethPumpAmount = ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR;
 
@@ -422,11 +430,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 ethLPAmount = ethAmount - ethPumpAmount;
 
         // Approve the locker to spend the paired asset and the $SUP tokens
-        TransferHelper.safeApprove(ethx, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
+        TransferHelper.safeApprove(address(ethx), address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supAmount);
 
         // Create a new Uniswap V3 position
-        (uint256 positionTokenId,,) = _createPosition(ethLPAmount, supAmount);
+        (positionTokenId,,) = _createPosition(ethLPAmount, supAmount);
 
         lpCooldownTimestamps[positionTokenId] = uint80(block.timestamp) + _LP_COOLDOWN_PERIOD;
 
@@ -456,14 +464,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Collect the fees
         _collect(tokenId, lockerOwner);
 
-        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
+        ISETH ethx =
+            ETH_SUP_POOL.token0() == address(FLUID) ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
 
         (, uint256 withdrawnSup) = _decreasePosition(tokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
         // Downgrade the withdrawn ETHx
-        ISETH(ethx).downgradeToETH(IERC20(ethx).balanceOf(address(this)));
+        ethx.downgradeToETH(ethx.balanceOf(address(this)));
 
         // Transfer ETH to the locker owner
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
@@ -487,17 +496,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         nonReentrant
         onlyLockerOwner
         unlockAvailable
-        returns (uint256 collectedWeth, uint256 collectedSup)
+        returns (uint256 collectedEthx, uint256 collectedSup)
     {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
         if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
-            (collectedSup, collectedWeth) = _collect(tokenId, lockerOwner);
+            (collectedSup, collectedEthx) = _collect(tokenId, lockerOwner);
         } else {
             // Collect the fees
-            (collectedWeth, collectedSup) = _collect(tokenId, lockerOwner);
+            (collectedEthx, collectedSup) = _collect(tokenId, lockerOwner);
         }
     }
 
@@ -760,13 +769,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @param ethx ETHx address
      * @param ethAmount The amount of ETH to swap
      */
-    function _pump(address ethx, uint256 ethAmount) internal {
-        IERC20(ethx).approve(address(SWAP_ROUTER), ethAmount);
+    function _pump(ISETH ethx, uint256 ethAmount) internal {
+        ethx.approve(address(SWAP_ROUTER), ethAmount);
 
         // No need slippage protection here as it is
         // implicitely covered by the `_createPosition` slippage protection
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: ethx,
+            tokenIn: address(ethx),
             tokenOut: address(FLUID),
             fee: ETH_SUP_POOL.fee(),
             recipient: address(this),
@@ -820,7 +829,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /**
      * @notice Decreases liquidity from a Uniswap V3 position
      * @param tokenId The ID of the NFT position to decrease liquidity from
-     * @param liquidityToRemove The amount of liquidity to remove from the position (only collect fees if set to 0)
+     * @param liquidityToRemove The amount of liquidity to remove from the position
      * @param amount0ToRemove The minimum amount Token0 to remove from the position
      * @param amount1ToRemove The minimum amount Token1 to remove from the position
      * @return withdrawnPairedAssetAmount The amount of paired asset received from removing liquidity
@@ -832,9 +841,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
     ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
-        // (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
-        // bool zeroIsSup = token0 == address(FLUID);
-
         bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);

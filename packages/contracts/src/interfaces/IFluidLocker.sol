@@ -208,8 +208,9 @@ interface IFluidLocker {
     /**
      * @notice Provides liquidity to a liquidity pool by creating or increasing a position
      * @param supAmount The amount of SUP tokens to provide as liquidity
+     * @return positionTokenId The NFT token identifier of the position created
      */
-    function provideLiquidity(uint256 supAmount) external payable;
+    function provideLiquidity(uint256 supAmount) external payable returns (uint256 positionTokenId);
 
     /**
      * @notice Withdraws liquidity from a liquidity pool
@@ -227,11 +228,12 @@ interface IFluidLocker {
 
     /**
      * @notice Collects accumulated fees from a Uniswap V3 position
+     * @dev SUP and ETHx fees generated from the position are collected and transferred directly to the locker owner
      * @param tokenId The token identifier of the position to collect fees from
-     * @return collectedWeth The amount of WETH tokens collected
+     * @return collectedEthx The amount of ETHx tokens collected
      * @return collectedSup The amount of SUP tokens collected
      */
-    function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
+    function collectFees(uint256 tokenId) external returns (uint256 collectedEthx, uint256 collectedSup);
 
     /**
      * @notice Helper function which connects the Locker to a program pool
@@ -242,6 +244,8 @@ interface IFluidLocker {
 
     /**
      * @notice Withdraws dust ETH from the locker
+     * @dev ETH (dust amount) may be left in the locker during the liquidity provision process.
+     * This happens when the pool reserves changes between transaction broadcast and transaction execution.
      * @dev Only this Locker owner can call this function
      */
     function withdrawDustETH() external;
