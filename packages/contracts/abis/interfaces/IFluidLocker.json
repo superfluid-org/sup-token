@@ -123,7 +123,7 @@
     ],
     "outputs": [
       {
-        "name": "collectedWeth",
+        "name": "collectedEthx",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -410,7 +410,13 @@
         "internalType": "uint256"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "positionTokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "payable"
   },
   {
@@ -447,7 +453,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -671,6 +677,11 @@
   {
     "type": "error",
     "name": "INSUFFICIENT_UNLOCK_AMOUNT",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INVALID_UNLOCKING_FEE",
     "inputs": []
   },
   {

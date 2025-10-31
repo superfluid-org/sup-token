@@ -16,7 +16,7 @@
         "internalType": "address"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -29,7 +29,7 @@
         "internalType": "address"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -102,19 +102,6 @@
   },
   {
     "type": "function",
-    "name": "setLockerCreationFee",
-    "inputs": [
-      {
-        "name": "newLockerCreationFee",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "upgradeTo",
     "inputs": [
       {
@@ -128,13 +115,6 @@
         "internalType": "bytes"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "withdrawETH",
-    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -169,11 +149,6 @@
       }
     ],
     "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "INVALID_FEE",
-    "inputs": []
   },
   {
     "type": "error",

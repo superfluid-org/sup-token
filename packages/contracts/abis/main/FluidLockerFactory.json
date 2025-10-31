@@ -76,7 +76,7 @@
         "internalType": "address"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -89,7 +89,7 @@
         "internalType": "address"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -175,38 +175,12 @@
   },
   {
     "type": "function",
-    "name": "lockerCreationFee",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "setGovernor",
     "inputs": [
       {
         "name": "newGovernor",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setLockerCreationFee",
-    "inputs": [
-      {
-        "name": "newLockerCreationFee",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -227,13 +201,6 @@
         "internalType": "bytes"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "withdrawETH",
-    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -325,11 +292,6 @@
   {
     "type": "error",
     "name": "FailedInnerCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "INVALID_FEE",
     "inputs": []
   },
   {

@@ -41,6 +41,11 @@
         "name": "swapRouter",
         "type": "address",
         "internalType": "contract IV3SwapRouter"
+      },
+      {
+        "name": "daoTreasury",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -75,6 +80,19 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "DAO_TREASURY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -237,6 +255,19 @@
   },
   {
     "type": "function",
+    "name": "UNLOCKING_FEE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "UNLOCK_AVAILABLE",
     "inputs": [],
     "outputs": [
@@ -385,7 +416,7 @@
     ],
     "outputs": [
       {
-        "name": "collectedWeth",
+        "name": "collectedEthx",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -749,7 +780,13 @@
         "internalType": "uint256"
       }
     ],
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "positionTokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "payable"
   },
   {
@@ -818,7 +855,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -1055,6 +1092,11 @@
   {
     "type": "error",
     "name": "INSUFFICIENT_UNLOCK_AMOUNT",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INVALID_UNLOCKING_FEE",
     "inputs": []
   },
   {
