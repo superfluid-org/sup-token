@@ -1,11 +1,13 @@
-import { BigInt, Address, Bytes } from "@graphprotocol/graph-ts";
+import { BigInt, Address, Bytes, log } from "@graphprotocol/graph-ts";
 import {
   FluidStreamClaimEvent,
   ClaimEventUnit,
   StakingStats,
   LockerStaking,
   StakingEvent,
-  LiquidityPosition
+  LiquidityPosition,
+  Fontaine,
+  Locker
 } from "../generated/schema";
 import {
   FluidStreamClaimed as FluidStreamClaimedEvent,
@@ -13,7 +15,8 @@ import {
   FluidStaked as FluidStakedEvent,
   FluidUnstaked as FluidUnstakedEvent,
   LiquidityPositionCreated as LiquidityPositionCreatedEvent,
-  LiquidityPositionBurned as LiquidityPositionBurnedEvent
+  LiquidityPositionBurned as LiquidityPositionBurnedEvent,
+  FluidUnlocked as FluidUnlockedEvent
 } from "../generated/templates/FluidLocker/FluidLocker";
 
 export function handleFluidStreamClaimed(event: FluidStreamClaimedEvent): void {
@@ -243,5 +246,38 @@ export function handleLiquidityPositionBurned(event: LiquidityPositionBurnedEven
     position.burnedBlock = event.block.number;
     position.burnedTx = event.transaction.hash;
     position.save();
+  }
+}
+
+export function handleFluidUnlocked(event: FluidUnlockedEvent): void {
+  // Only create Fontaine entity if fontaine address is not zero (vest unlock)
+  if (event.params.fontaine.toHexString() != "0x0000000000000000000000000000000000000000") {
+    const fontaine = new Fontaine(event.params.fontaine);
+    
+    // Load the locker entity
+    const locker = Locker.load(event.address);
+    if (locker == null) {
+      log.warning("Locker {} not found", [event.address.toHexString()]);
+      return; // Locker should exist, but handle gracefully
+    }
+    
+    fontaine.locker = locker.id;
+    fontaine.recipient = event.params.recipient;
+    fontaine.unlockPeriod = event.params.unlockPeriod;
+    fontaine.unlockAmount = event.params.availableBalance;
+    
+    // Calculate flow rate: unlockAmount / unlockPeriod
+    const flowRate = event.params.availableBalance.div(event.params.unlockPeriod);
+    fontaine.unlockFlowRate = flowRate;
+    
+    // Calculate end date: current timestamp + unlock period
+    const endDate = event.block.timestamp.plus(event.params.unlockPeriod);
+    fontaine.endDate = endDate;
+    
+    fontaine.blockNumber = event.block.number;
+    fontaine.blockTimestamp = event.block.timestamp;
+    fontaine.transactionHash = event.transaction.hash;
+    
+    fontaine.save();
   }
 }
