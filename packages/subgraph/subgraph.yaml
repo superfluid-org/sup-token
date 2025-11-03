@@ -94,6 +94,7 @@ templates:
         - StakingStats
         - LockerStaking
         - StakingEvent
+        - LiquidityPosition
       abis:
         - name: FluidLocker
           file: ./abis/FluidLocker.json
@@ -106,4 +107,8 @@ templates:
           handler: handleFluidStaked
         - event: FluidUnstaked(indexed uint256,indexed uint256)
           handler: handleFluidUnstaked
+        - event: LiquidityPositionCreated(indexed uint256)
+          handler: handleLiquidityPositionCreated
+        - event: LiquidityPositionBurned(indexed uint256)
+          handler: handleLiquidityPositionBurned
       file: ./src/fluid-locker.ts

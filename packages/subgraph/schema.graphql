@@ -37,6 +37,11 @@ type Locker @entity(immutable: true) {
   Derived field referencing staking data for this locker.
   """
   stakingData: LockerStaking @derivedFrom(field: "locker")
+
+  """
+  All liquidity positions created by this locker (active and burned).
+  """
+  liquidityPositions: [LiquidityPosition!]! @derivedFrom(field: "locker")
 }
 
 type FluidStreamClaimEvent @entity(immutable: true) {
@@ -224,4 +229,51 @@ type StakingEvent @entity(immutable: true) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+}
+
+type LiquidityPosition @entity(immutable: false) {
+  """
+  The tokenId of the Uniswap V3 position NFT.
+  """
+  id: Bytes!
+
+  """
+  The locker that owns this position.
+  """
+  locker: Locker!
+
+  """
+  The Uniswap V3 NFT token ID.
+  """
+  tokenId: BigInt!
+
+  """
+  Timestamp when the position was created.
+  """
+  createdAt: BigInt!
+
+  """
+  Block number when the position was created.
+  """
+  createdBlock: BigInt!
+
+  """
+  Transaction hash where the position was created.
+  """
+  createdTx: Bytes!
+
+  """
+  Timestamp when the position was burned (null if still active).
+  """
+  burnedAt: BigInt
+
+  """
+  Block number when the position was burned (null if still active).
+  """
+  burnedBlock: BigInt
+
+  """
+  Transaction hash where the position was burned (null if still active).
+  """
+  burnedTx: Bytes
 }

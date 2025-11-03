@@ -1,16 +1,19 @@
 import { BigInt, Address, Bytes } from "@graphprotocol/graph-ts";
-import { 
-  FluidStreamClaimEvent, 
-  ClaimEventUnit, 
+import {
+  FluidStreamClaimEvent,
+  ClaimEventUnit,
   StakingStats,
   LockerStaking,
-  StakingEvent
+  StakingEvent,
+  LiquidityPosition
 } from "../generated/schema";
 import {
   FluidStreamClaimed as FluidStreamClaimedEvent,
   FluidStreamsClaimed as FluidStreamsClaimedEvent,
   FluidStaked as FluidStakedEvent,
   FluidUnstaked as FluidUnstakedEvent,
+  LiquidityPositionCreated as LiquidityPositionCreatedEvent,
+  LiquidityPositionBurned as LiquidityPositionBurnedEvent
 } from "../generated/templates/FluidLocker/FluidLocker";
 
 export function handleFluidStreamClaimed(event: FluidStreamClaimedEvent): void {
@@ -207,4 +210,38 @@ export function handleFluidUnstaked(event: FluidUnstakedEvent): void {
   stakingEvent.blockTimestamp = event.block.timestamp;
   stakingEvent.transactionHash = event.transaction.hash;
   stakingEvent.save();
+}
+
+export function handleLiquidityPositionCreated(event: LiquidityPositionCreatedEvent): void {
+  const tokenId = event.params.tokenId;
+  const lockerAddress = event.address;
+
+  // Create new position entity (id = locker address + tokenId)
+  const positionId = lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)));
+  const position = new LiquidityPosition(positionId);
+  position.locker = lockerAddress;
+  position.tokenId = tokenId;
+  position.createdAt = event.block.timestamp;
+  position.createdBlock = event.block.number;
+  position.createdTx = event.transaction.hash;
+  position.burnedAt = null;
+  position.burnedBlock = null;
+  position.burnedTx = null;
+
+  position.save();
+}
+
+export function handleLiquidityPositionBurned(event: LiquidityPositionBurnedEvent): void {
+  const tokenId = event.params.tokenId;
+  const lockerAddress = event.address;
+
+  // Load existing position
+  const positionId = lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)));
+  const position = LiquidityPosition.load(positionId);
+  if (position) {
+    position.burnedAt = event.block.timestamp;
+    position.burnedBlock = event.block.number;
+    position.burnedTx = event.transaction.hash;
+    position.save();
+  }
 }
