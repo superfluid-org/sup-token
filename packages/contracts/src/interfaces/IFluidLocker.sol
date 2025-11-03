@@ -125,6 +125,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unlock an amount of SUP with an invalid unlocking fee
     error INVALID_UNLOCKING_FEE();
 
+    /// @notice Error thrown when attempting to transfer the unlocking fee to the DAO Treasury fails
+    error FAILED_TO_TRANSFER_UNLOCKING_FEE();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

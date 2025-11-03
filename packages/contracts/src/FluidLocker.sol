@@ -372,7 +372,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Transfer the unlocking fee to the Staking Reward Controller owner
-        payable(DAO_TREASURY).transfer(msg.value);
+        (bool success,) = payable(DAO_TREASURY).call{ value: msg.value }("");
+
+        if (!success) {
+            revert FAILED_TO_TRANSFER_UNLOCKING_FEE();
+        }
 
         if (unlockPeriod == 0) {
             _instantUnlock(unlockAmount, recipient);
