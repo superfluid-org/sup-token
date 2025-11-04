@@ -203,7 +203,7 @@ interface IFluidLocker {
     function lock(uint256 amount) external;
 
     /**
-     * @notice Unlock the available FLUID Token from this locker
+     * @notice Unlock the available FLUID Token from this locker and transfer the unlocking fee to the DAO Treasury
      * @dev Only this Locker owner can call this function
      * @param unlockAmount the amount of FLUID Token to unlock
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
