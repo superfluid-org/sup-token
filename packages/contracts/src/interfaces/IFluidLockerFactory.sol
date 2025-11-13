@@ -57,6 +57,12 @@ interface IFluidLockerFactory {
     /// @notice Error thrown when the attempting to perform a governance protected operation
     error NOT_GOVERNOR();
 
+    /// @notice Error thrown when the attempting to create a locker that already exists
+    error LOCKER_ALREADY_EXISTS();
+
+    /// @notice Error thrown when the attempting to set a locker address with an invalid parameter
+    error INVALID_PARAMETER();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -90,6 +96,14 @@ interface IFluidLockerFactory {
      * @param newGovernor new governor address
      */
     function setGovernor(address newGovernor) external;
+
+    /**
+     * @notice Set the locker address for a given user
+     * @dev Only the governor address can perform this operation
+     * @param lockerOwner the owner of the Locker to be set
+     * @param lockerInstance the Locker contract address to be set
+     */
+    function setLockerAddress(address lockerOwner, address lockerInstance) external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

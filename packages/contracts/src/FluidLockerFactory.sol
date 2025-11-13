@@ -133,6 +133,14 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         emit GovernorUpdated(newGovernor);
     }
 
+    /// @inheritdoc IFluidLockerFactory
+    function setLockerAddress(address lockerOwner, address lockerInstance) external onlyGovernor {
+        // Prevent assigning a locker to an user without a locker and prevent assigning a zero-address locker to an user
+        if (_lockers[lockerOwner] == address(0) || lockerInstance == address(0)) revert INVALID_PARAMETER();
+
+        _lockers[lockerOwner] = lockerInstance;
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -166,6 +174,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
      * @param lockerOwner the owner of the Locker to be deployed
      */
     function _createLockerContract(address lockerOwner) internal returns (address lockerInstance) {
+        if (_lockers[lockerOwner] != address(0)) revert LOCKER_ALREADY_EXISTS();
+
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
