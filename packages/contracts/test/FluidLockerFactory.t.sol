@@ -28,7 +28,7 @@ contract FluidLockerFactoryTest is SFTest {
 
         assertEq(_fluidLockerFactory.getLockerAddress(CAROL), userLockerAddress, "locker should exists");
 
-        vm.expectRevert();
+        vm.expectRevert(IFluidLockerFactory.LOCKER_ALREADY_EXISTS.selector);
         _fluidLockerFactory.createLockerContract();
 
         vm.stopPrank();
@@ -47,10 +47,43 @@ contract FluidLockerFactoryTest is SFTest {
 
         assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
 
-        vm.expectRevert();
+        vm.expectRevert(IFluidLockerFactory.LOCKER_ALREADY_EXISTS.selector);
         _fluidLockerFactory.createLockerContract(_onBehalfOf);
 
         vm.stopPrank();
+    }
+
+    function testSetLockerAddress(address _lockerOwner, address _lockerInstance, address _nonGovernor) external {
+        vm.assume(_nonGovernor != _fluidLockerFactory.governor());
+        vm.assume(_lockerOwner != address(0));
+        vm.assume(_lockerInstance != address(0));
+
+        vm.startPrank(ADMIN);
+
+        // Ensure that setting a locker address to the zero-address for an user a locker will revert
+        vm.expectRevert(IFluidLockerFactory.INVALID_PARAMETER.selector);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, address(0));
+
+        // Ensure that setting a locker address to an user with no locker will revert
+        vm.expectRevert(IFluidLockerFactory.INVALID_PARAMETER.selector);
+        _fluidLockerFactory.setLockerAddress(address(0), _lockerInstance);
+        vm.stopPrank();
+
+        // Create a locker (pre-requisite for setting a new locker address)
+        vm.prank(_lockerOwner);
+        address lockerAddress = _fluidLockerFactory.createLockerContract();
+        assertEq(lockerAddress, _fluidLockerFactory.getLockerAddress(_lockerOwner), "locker should be created");
+
+        vm.prank(_nonGovernor);
+        // Ensure that a non-governor cannot set a locker address
+        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, _lockerInstance);
+
+        // Set a new locker address for the user
+        vm.prank(ADMIN);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, _lockerInstance);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_lockerOwner), _lockerInstance, "locker should be set");
     }
 
     function testSetGovernor(address _newGovernor) external {
