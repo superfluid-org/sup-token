@@ -32,7 +32,6 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
@@ -155,6 +154,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Minimum SUP unlock amount
     uint256 public constant MIN_UNLOCK_AMOUNT = 10 ether;
 
+    /// @notice Fee charged in ETH for unlocking SUP from this Locker
+    uint256 public constant UNLOCKING_FEE = 0.0001 ether;
+
+    /// @notice DAO Treasury address used to receive the unlocking fee
+    address public immutable DAO_TREASURY;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -218,7 +223,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         bool isUnlockAvailable,
         INonfungiblePositionManager nonfungiblePositionManager,
         IUniswapV3Pool ethSupPool,
-        IV3SwapRouter swapRouter
+        IV3SwapRouter swapRouter,
+        address daoTreasury
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -237,6 +243,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         SWAP_ROUTER = swapRouter;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
         ETH_SUP_POOL = ethSupPool;
+        DAO_TREASURY = daoTreasury;
     }
 
     /**
@@ -321,10 +328,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient)
         external
+        payable
         nonReentrant
         onlyLockerOwner
         unlockAvailable
     {
+        if (msg.value != UNLOCKING_FEE) {
+            revert INVALID_UNLOCKING_FEE();
+        }
+
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
@@ -359,6 +371,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             }
         }
 
+        // Transfer the unlocking fee to the DAO Treasury
+        (bool success,) = payable(DAO_TREASURY).call{ value: msg.value }("");
+
+        // Revert if the transfer fails
+        if (!success) {
+            revert FAILED_TO_TRANSFER_UNLOCKING_FEE();
+        }
+
+        // Perform the unlock operation
         if (unlockPeriod == 0) {
             _instantUnlock(unlockAmount, recipient);
         } else {

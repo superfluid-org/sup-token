@@ -64,7 +64,8 @@ function _deployLockerBeacon(
             settings.unlockStatus,
             settings.nonfungiblePositionManager,
             settings.ethSupPool,
-            settings.swapRouter
+            settings.swapRouter,
+            settings.treasury
         )
     );
     UpgradeableBeacon lockerBeacon = new UpgradeableBeacon(lockerLogicAddress);
