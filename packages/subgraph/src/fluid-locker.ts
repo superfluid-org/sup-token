@@ -7,6 +7,7 @@ import {
   StakingEvent,
   LiquidityPosition,
   Fontaine,
+  InstantUnlock,
   Locker
 } from "../generated/schema";
 import {
@@ -250,16 +251,41 @@ export function handleLiquidityPositionBurned(event: LiquidityPositionBurnedEven
 }
 
 export function handleFluidUnlocked(event: FluidUnlockedEvent): void {
-  // Only create Fontaine entity if fontaine address is not zero (vest unlock)
-  if (event.params.fontaine.toHexString() != "0x0000000000000000000000000000000000000000") {
-    const fontaine = new Fontaine(event.params.fontaine);
+  // Load the locker entity
+  const locker = Locker.load(event.address);
+  if (locker == null) {
+    log.warning("Locker {} not found", [event.address.toHexString()]);
+    return; // Locker should exist, but handle gracefully
+  }
+
+  const isInstantUnlock = event.params.unlockPeriod.equals(BigInt.zero()) &&
+    event.params.fontaine.toHexString() == "0x0000000000000000000000000000000000000000";
+
+  if (isInstantUnlock) {
+    // Handle instant unlock
+    const instantUnlock = new InstantUnlock(
+      event.transaction.hash.concatI32(event.logIndex.toI32())
+    );
     
-    // Load the locker entity
-    const locker = Locker.load(event.address);
-    if (locker == null) {
-      log.warning("Locker {} not found", [event.address.toHexString()]);
-      return; // Locker should exist, but handle gracefully
-    }
+    instantUnlock.locker = locker.id;
+    instantUnlock.recipient = event.params.recipient;
+    instantUnlock.unlockAmount = event.params.availableBalance;
+    
+    // Calculate penalty: 80% (8000 BP out of 10000)
+    const penaltyAmount = event.params.availableBalance.times(BigInt.fromI32(8000)).div(BigInt.fromI32(10000));
+    instantUnlock.penaltyAmount = penaltyAmount;
+    
+    // Calculate net amount: 20% (unlockAmount - penaltyAmount)
+    instantUnlock.netAmount = event.params.availableBalance.minus(penaltyAmount);
+    
+    instantUnlock.blockNumber = event.block.number;
+    instantUnlock.blockTimestamp = event.block.timestamp;
+    instantUnlock.transactionHash = event.transaction.hash;
+    
+    instantUnlock.save();
+  } else {
+    // Handle vest unlock (create Fontaine entity)
+    const fontaine = new Fontaine(event.params.fontaine);
     
     fontaine.locker = locker.id;
     fontaine.recipient = event.params.recipient;

@@ -96,6 +96,7 @@ templates:
         - StakingEvent
         - LiquidityPosition
         - Fontaine
+        - InstantUnlock
       abis:
         - name: FluidLocker
           file: ./abis/FluidLocker.json

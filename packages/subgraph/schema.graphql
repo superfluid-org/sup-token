@@ -318,3 +318,39 @@ type Fontaine @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type InstantUnlock @entity(immutable: true) {
+  """
+  Unique identifier: transaction hash concatenated with log index.
+  """
+  id: Bytes!
+
+  """
+  The locker contract that performed this instant unlock.
+  """
+  locker: Locker!
+
+  """
+  The recipient address that received the unlocked tokens.
+  """
+  recipient: Bytes!
+
+  """
+  The total amount that was unlocked (before penalty).
+  """
+  unlockAmount: BigInt!
+
+  """
+  The penalty amount that was distributed to stakers (80% of unlockAmount).
+  """
+  penaltyAmount: BigInt!
+
+  """
+  The net amount received by the recipient (20% of unlockAmount).
+  """
+  netAmount: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
