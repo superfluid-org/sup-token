@@ -123,11 +123,14 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signerPkey != _invalidSignerPkey);
         vm.assume(_user != address(0));
         vm.assume(_user != address(_stakingRewardController.taxDistributionPool()));
+        vm.assume(_user != address(_stakingRewardController.lpDistributionPool()));
         _units = bound(_units, 1, 1_000_000);
 
         uint256 programId = 1;
 
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
+
+        vm.assume(_user != address(pool));
 
         uint256 nonce = _programManagerBase.getNextValidNonce(programId, _user);
         bytes memory validSignature = _helperGenerateSignature(_signerPkey, _user, _units, programId, nonce);
@@ -816,7 +819,7 @@ contract FluidEPProgramManagerTest is SFTest {
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
-        bobLocker.stake();
+        bobLocker.stake(10_000e18);
     }
 
     function _helperStartFunding(uint256 _programId, uint256 _fundingAmount, uint32 _duration) internal {

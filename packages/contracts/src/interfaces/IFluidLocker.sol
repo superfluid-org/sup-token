@@ -57,7 +57,13 @@ interface IFluidLocker {
     event FluidStaked(uint256 indexed newTotalStakedBalance, uint256 indexed addedAmount);
 
     /// @notice Event emitted when $FLUID are unstaked
-    event FluidUnstaked();
+    event FluidUnstaked(uint256 indexed newTotalStakedBalance, uint256 indexed removedAmount);
+
+    /// @notice Event emitted when a liquidity position is created
+    event LiquidityPositionCreated(uint256 indexed tokenId);
+
+    /// @notice Event emitted when a liquidity position is burned
+    event LiquidityPositionBurned(uint256 indexed tokenId);
 
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
@@ -80,17 +86,47 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have available $FLUID
-    error NO_FLUID_TO_STAKE();
+    /// @notice Error thrown when attempting to stake or to LP from locker that does not have enough available $FLUID
+    error INSUFFICIENT_AVAILABLE_BALANCE();
+
+    /// @notice Error thrown when attempting to unstake from locker that does not have enough staked $FLUID
+    error INSUFFICIENT_STAKED_BALANCE();
 
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
 
+    /// @notice Error thrown when attempting to withdraw liquidity while the cooldown is not yet elapsed
+    error LP_COOLDOWN_NOT_ELAPSED();
+
     /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
     error TTE_NOT_ACTIVATED();
 
-    /// @notice Error thrown when attempting to unlock while the Tax Distribution Pool did not distribute units
-    error TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
+    /// @notice Error thrown when attempting to unlock while the Staker Distribution Pool did not distribute units
+    error STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+
+    /// @notice Error thrown when attempting to unlock while the Provider Distribution Pool did not distribute units
+    error LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
+
+    /// @notice Error thrown when attempting to provide liquidity with an amount greater than the available balance
+    error INSUFFICIENT_BALANCE();
+
+    /// @notice Error thrown when attempting to collect fees or withdrawing liquidity while the locker has no position
+    error LOCKER_HAS_NO_POSITION();
+
+    /// @notice Error thrown when attempting to provide liquidity to a Uniswap Pool that is not approved
+    error LIQUIDITY_POOL_NOT_APPROVED();
+
+    /// @notice Error thrown when attempting to provide liquidity with an amount of ETH sent different than the paired asset amount
+    error INSUFFICIENT_ETH_SENT();
+
+    /// @notice Error thrown when attempting to unlock an amount of SUP less than the minimum unlock amount
+    error INSUFFICIENT_UNLOCK_AMOUNT();
+
+    /// @notice Error thrown when attempting to unlock an amount of SUP with an invalid unlocking fee
+    error INVALID_UNLOCKING_FEE();
+
+    /// @notice Error thrown when attempting to transfer the unlocking fee to the DAO Treasury fails
+    error FAILED_TO_TRANSFER_UNLOCKING_FEE();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -122,6 +158,44 @@ interface IFluidLocker {
     ) external;
 
     /**
+     * @notice Update this locker units within the given program identifier's GDA pool and stake all available SUP Tokens
+     * @param programId program identifier corresponding to the unit update
+     * @param totalProgramUnits new total amount of units
+     * @param nonce nonce associated to the signature provided by Stack
+     * @param stackSignature stack signature containing necessary info to update units
+     */
+    function claimAndStake(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+        external;
+
+    /**
+     * @notice Batch update this locker units within the given programs identifier's GDA pools and stake all available SUP Tokens
+     * @param programIds array of program identifiers corresponding to the unit update
+     * @param totalProgramUnits array new total amount of units
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
+     */
+    function claimAndStake(
+        uint256[] memory programIds,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
+
+    /**
+     * @notice Stake all the available FLUID Token of this locker
+     * @dev Only this Locker owner can call this function
+     * @param amountToStake amount of FLUID Token to stake
+     */
+    function stake(uint256 amountToStake) external;
+
+    /**
+     * @notice Unstake all the staked FLUID Token of this locker
+     * @dev Only this Locker owner can call this function
+     * @param amountToUnstake amount of FLUID Token to unstake
+     */
+    function unstake(uint256 amountToUnstake) external;
+
+    /**
      * @notice Lock a given `amount` of FLUID Token in this Locker
      * @dev Requires preliminary token approval
      * @param amount amount of FLUID Token to lock
@@ -129,24 +203,43 @@ interface IFluidLocker {
     function lock(uint256 amount) external;
 
     /**
-     * @notice Unlock the available FLUID Token from this locker
+     * @notice Unlock the available FLUID Token from this locker and transfer the unlocking fee to the DAO Treasury
      * @dev Only this Locker owner can call this function
+     * @param unlockAmount the amount of FLUID Token to unlock
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
      * @param recipient account to receive the unlocked FLUID tokens
      */
-    function unlock(uint128 unlockPeriod, address recipient) external;
+    function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient) external payable;
 
     /**
-     * @notice Stake all the available FLUID Token of this locker
-     * @dev Only this Locker owner can call this function
+     * @notice Provides liquidity to a liquidity pool by creating or increasing a position
+     * @param supAmount The amount of SUP tokens to provide as liquidity
+     * @return positionTokenId The NFT token identifier of the position created
      */
-    function stake() external;
+    function provideLiquidity(uint256 supAmount) external payable returns (uint256 positionTokenId);
 
     /**
-     * @notice Unstake all the staked FLUID Token of this locker
-     * @dev Only this Locker owner can call this function
+     * @notice Withdraws liquidity from a liquidity pool
+     * @param tokenId The token identifier of the position to withdraw liquidity from
+     * @param liquidityToRemove The amount of liquidity to remove from the position
+     * @param amount0ToRemove The amount of token0 to remove from the position
+     * @param amount1ToRemove The amount of token1 to remove from the position
      */
-    function unstake() external;
+    function withdrawLiquidity(
+        uint256 tokenId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) external;
+
+    /**
+     * @notice Collects accumulated fees from a Uniswap V3 position
+     * @dev SUP and ETHx fees generated from the position are collected and transferred directly to the locker owner
+     * @param tokenId The token identifier of the position to collect fees from
+     * @return collectedEthx The amount of ETHx tokens collected
+     * @return collectedSup The amount of SUP tokens collected
+     */
+    function collectFees(uint256 tokenId) external returns (uint256 collectedEthx, uint256 collectedSup);
 
     /**
      * @notice Helper function which connects the Locker to a program pool
@@ -156,6 +249,15 @@ interface IFluidLocker {
     function connect(uint256 programId) external;
 
     /**
+     * @notice Withdraws dust ETH from the locker
+     * @dev ETH (dust amount) may be left in the locker during the liquidity provision process.
+     * This happens when the pool reserves changes between transaction broadcast and transaction execution.
+     * @dev Only this Locker owner can call this function
+     */
+    function withdrawDustETH() external;
+
+    /**
+     * @notice Helper function to help the Locker disconnect from a program pool
      * @notice Helper function which disconnects the Locker from a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
@@ -179,6 +281,23 @@ interface IFluidLocker {
      * @param stackSignature Single signature containing necessary info to update all units in the batch
      */
     function disconnectAndClaim(
+        uint256[] memory programIdsToDisconnect,
+        uint256[] memory programIdsToClaim,
+        uint256[] memory totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external;
+
+    /**
+     * @notice Helper function which combines batched disconnectFromPool, claim and stake into one call.
+     * @dev Only this Locker owner can call this function
+     * @param programIdsToDisconnect array of program identifiers corresponding to the pools to disconnect from
+     * @param programIdsToClaim array of program identifiers corresponding to the pools to claim units from
+     * @param totalProgramUnits array of total program units to claim
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
+     */
+    function disconnectAndClaimAndStake(
         uint256[] memory programIdsToDisconnect,
         uint256[] memory programIdsToClaim,
         uint256[] memory totalProgramUnits,
@@ -227,6 +346,12 @@ interface IFluidLocker {
     function getStakedBalance() external view returns (uint256 sBalance);
 
     /**
+     * @notice Returns this Lockers' Uniswap V3 Liquidity balance in the SUP/ETH pool
+     * @return lBalance Uniswap V3 Liquidity balance in the SUP/ETH pool
+     */
+    function getLiquidityBalance() external view returns (uint256 lBalance);
+
+    /**
      * @notice Returns this Lockers' available FLUID Token balance
      * @dev Available balance is the total balance minus the staked balance
      * @return aBalance amount of FLUID Token available in this Locker
@@ -238,4 +363,11 @@ interface IFluidLocker {
      * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
+
+    /**
+     * @notice Returns the liquidity of the position for the given token identifier
+     * @param tokenId The token identifier of the position to query
+     * @return liquidity the liquidity of the position for the given token identifier
+     */
+    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
 }

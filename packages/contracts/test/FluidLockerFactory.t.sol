@@ -13,64 +13,77 @@ import { IFluidLockerFactory } from "../src/FluidLockerFactory.sol";
 using SuperTokenV1Library for ISuperToken;
 
 contract FluidLockerFactoryTest is SFTest {
-    uint256 public constant LOCKER_CREATION_FEE = 0.00025 ether;
-
     function setUp() public override {
         super.setUp();
-
-        vm.prank(ADMIN);
-        _fluidLockerFactory.setLockerCreationFee(LOCKER_CREATION_FEE);
     }
 
-    function testCreateLockerContract(address _user, uint256 _invalidFee) external {
-        vm.assume(_user != address(0));
-        vm.assume(_invalidFee != LOCKER_CREATION_FEE);
+    function testCreateLockerContract() external {
+        vm.deal(CAROL, type(uint256).max);
 
-        vm.deal(_user, type(uint256).max);
+        vm.startPrank(CAROL);
 
-        vm.startPrank(_user);
+        assertEq(_fluidLockerFactory.getLockerAddress(CAROL), address(0), "locker should not exists");
 
-        vm.expectRevert(IFluidLockerFactory.INVALID_FEE.selector);
-        _fluidLockerFactory.createLockerContract{ value: _invalidFee }();
+        address userLockerAddress = _fluidLockerFactory.createLockerContract();
 
-        assertEq(_fluidLockerFactory.getLockerAddress(_user), address(0), "locker should not exists");
+        assertEq(_fluidLockerFactory.getLockerAddress(CAROL), userLockerAddress, "locker should exists");
 
-        address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
-
-        assertEq(_fluidLockerFactory.getLockerAddress(_user), userLockerAddress, "locker should exists");
-        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
-
-        vm.expectRevert();
-        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
+        vm.expectRevert(IFluidLockerFactory.LOCKER_ALREADY_EXISTS.selector);
+        _fluidLockerFactory.createLockerContract();
 
         vm.stopPrank();
     }
 
-    function testCreateLockerContractOnBehalf(address _user, address _onBehalfOf, uint256 _invalidFee) external {
+    function testCreateLockerContractOnBehalf(address _user, address _onBehalfOf) external {
         vm.assume(_user != _onBehalfOf);
         vm.assume(_user != address(0));
         vm.assume(_onBehalfOf != address(0));
-        vm.assume(_invalidFee != LOCKER_CREATION_FEE);
-
-        vm.deal(_user, type(uint256).max);
 
         vm.startPrank(_user);
 
-        vm.expectRevert(IFluidLockerFactory.INVALID_FEE.selector);
-        _fluidLockerFactory.createLockerContract{ value: _invalidFee }(_onBehalfOf);
-
         assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), address(0), "locker should not exists");
 
-        address createdLockerAddress =
-            _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
+        address createdLockerAddress = _fluidLockerFactory.createLockerContract(_onBehalfOf);
 
         assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
-        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
 
-        vm.expectRevert();
-        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
+        vm.expectRevert(IFluidLockerFactory.LOCKER_ALREADY_EXISTS.selector);
+        _fluidLockerFactory.createLockerContract(_onBehalfOf);
 
         vm.stopPrank();
+    }
+
+    function testSetLockerAddress(address _lockerOwner, address _lockerInstance, address _nonGovernor) external {
+        vm.assume(_nonGovernor != _fluidLockerFactory.governor());
+        vm.assume(_lockerOwner != address(0));
+        vm.assume(_lockerInstance != address(0));
+
+        vm.startPrank(ADMIN);
+
+        // Ensure that setting a locker address to the zero-address for an user a locker will revert
+        vm.expectRevert(IFluidLockerFactory.INVALID_PARAMETER.selector);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, address(0));
+
+        // Ensure that setting a locker address to an user with no locker will revert
+        vm.expectRevert(IFluidLockerFactory.INVALID_PARAMETER.selector);
+        _fluidLockerFactory.setLockerAddress(address(0), _lockerInstance);
+        vm.stopPrank();
+
+        // Create a locker (pre-requisite for setting a new locker address)
+        vm.prank(_lockerOwner);
+        address lockerAddress = _fluidLockerFactory.createLockerContract();
+        assertEq(lockerAddress, _fluidLockerFactory.getLockerAddress(_lockerOwner), "locker should be created");
+
+        vm.prank(_nonGovernor);
+        // Ensure that a non-governor cannot set a locker address
+        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, _lockerInstance);
+
+        // Set a new locker address for the user
+        vm.prank(ADMIN);
+        _fluidLockerFactory.setLockerAddress(_lockerOwner, _lockerInstance);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_lockerOwner), _lockerInstance, "locker should be set");
     }
 
     function testSetGovernor(address _newGovernor) external {
@@ -88,41 +101,11 @@ contract FluidLockerFactoryTest is SFTest {
         assertEq(_fluidLockerFactory.governor(), _newGovernor, "governor not updated");
     }
 
-    function testWithdrawETH(address _user) external {
-        vm.assume(_user != address(0));
-        vm.assume(_user != ADMIN);
-
-        vm.deal(_user, type(uint256).max);
-
-        vm.startPrank(_user);
-
-        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
-
-        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
-
-        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
-        _fluidLockerFactory.withdrawETH();
-
-        vm.stopPrank();
-
-        uint256 adminBalanceBefore = address(ADMIN).balance;
-
-        vm.prank(ADMIN);
-        _fluidLockerFactory.withdrawETH();
-
-        uint256 adminBalanceAfter = address(ADMIN).balance;
-
-        assertEq(adminBalanceAfter, adminBalanceBefore + LOCKER_CREATION_FEE, "incorrect balance");
-        assertEq(address(_fluidLockerFactory).balance, 0, "incorrect balance");
-    }
-
     function testGetUserLocker(address user, address nonUser) external {
         vm.assume(user != nonUser);
 
-        vm.deal(user, LOCKER_CREATION_FEE);
-
         vm.prank(user);
-        address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
+        address userLockerAddress = _fluidLockerFactory.createLockerContract();
 
         (bool isCreated, address lockerAddressResult) = _fluidLockerFactory.getUserLocker(user);
 

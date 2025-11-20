@@ -1,0 +1,301 @@
+[
+  {
+    "type": "function",
+    "name": "approveLocker",
+    "inputs": [
+      {
+        "name": "lockerAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getTaxAllocation",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "stakerAllocationBP",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "liquidityProviderAllocationBP",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lpDistributionPool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "lpDistributionPool",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "refreshTaxDistributionFlow",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setLockerFactory",
+    "inputs": [
+      {
+        "name": "lockerFactoryAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setTaxAllocation",
+    "inputs": [
+      {
+        "name": "stakerAllocationBP",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "liquidityProviderAllocationBP",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setupLPDistributionPool",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "taxDistributionPool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "taxDistributionPool",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "updateLiquidityProviderUnits",
+    "inputs": [
+      {
+        "name": "lockerLiquidityBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateStakerUnits",
+    "inputs": [
+      {
+        "name": "lockerStakedBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "upgradeTo",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "LockerApproved",
+    "inputs": [
+      {
+        "name": "approvedLocker",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LockerFactoryAddressUpdated",
+    "inputs": [
+      {
+        "name": "newLockerFactoryAddress",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProgramManagerAddressUpdated",
+    "inputs": [
+      {
+        "name": "newProgramManagerAddress",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SubsidyFlowRateUpdated",
+    "inputs": [
+      {
+        "name": "newSubsidyFlowRate",
+        "type": "int96",
+        "indexed": true,
+        "internalType": "int96"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TaxAllocationUpdated",
+    "inputs": [
+      {
+        "name": "stakerAllocationBP",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "liquidityProviderAllocationBP",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TaxDistributionFlowUpdated",
+    "inputs": [
+      {
+        "name": "liquidityProviderFlowRate",
+        "type": "int96",
+        "indexed": false,
+        "internalType": "int96"
+      },
+      {
+        "name": "stakerFlowRate",
+        "type": "int96",
+        "indexed": false,
+        "internalType": "int96"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedLiquidityProviderUnits",
+    "inputs": [
+      {
+        "name": "liquidityProvider",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "totalLiquidityProviderUnits",
+        "type": "uint128",
+        "indexed": true,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UpdatedStakersUnits",
+    "inputs": [
+      {
+        "name": "staker",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "totalStakerUnits",
+        "type": "uint128",
+        "indexed": true,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "INVALID_PARAMETER",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LP_DISTRIBUTION_POOL_ALREADY_SET",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_APPROVED_LOCKER",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_LOCKER_FACTORY",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_PROGRAM_MANAGER",
+    "inputs": []
+  }
+]

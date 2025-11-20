@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { console2 } from "forge-std/Test.sol";
-
 import { SFTest } from "./SFTest.t.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -16,7 +14,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { Fontaine } from "../src/Fontaine.sol";
-import { calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
+import { calculateVestUnlockAmounts } from "../src/FluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -24,47 +22,43 @@ using SafeCast for int256;
 contract FontaineTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
+    uint256 internal constant _EARLY_END_DELAY = 1 days;
     uint256 internal constant _BP_DENOMINATOR = 10_000;
     uint256 internal constant _SCALER = 1e18;
 
     IFluidLocker public bobLocker;
+    IFluidLocker public carolLocker;
 
     function setUp() public virtual override {
         super.setUp();
 
         vm.prank(BOB);
         bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
+
+        vm.prank(CAROL);
+        carolLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
     }
 
     function testInitialize(uint128 unlockPeriod, uint256 unlockAmount) external {
+        // Bound Fuzz Parameters
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
-        _helperBobStaking();
-        (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
 
+        // Create and fund the Fontaine
         address newFontaine = _helperCreateFontaine();
-
-        address user = makeAddr("user");
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
 
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+        // Initialize the Fontaine
+        address user = makeAddr("user");
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, unlockPeriod);
 
-        assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorreclty set");
-        assertEq(Fontaine(newFontaine).taxFlowRate(), uint96(taxFlowRate), "tax flow rate incorreclty set");
-        assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorreclty set");
-
-        (, int96 actualTaxFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            newFontaine, Fontaine(newFontaine).TAX_DISTRIBUTION_POOL(), taxFlowRate
-        );
-
-        assertEq(
-            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).TAX_DISTRIBUTION_POOL()),
-            actualTaxFlowRate,
-            "incorrect tax flowrate"
-        );
-
+        // Assert the Fontaine is initialized correctly
+        assertEq(Fontaine(newFontaine).recipient(), user, "recipient incorrect");
+        assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorrect");
+        assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorrect");
         assertEq(_fluid.getFlowRate(newFontaine, user), unlockFlowRate, "incorrect unlock flowrate");
     }
 
@@ -74,28 +68,27 @@ contract FontaineTest is SFTest {
         uint128 terminationDelay,
         uint128 tooEarlyDelay
     ) external {
+        // Bound Fuzz Parameters
+        /// NOTE : issues will arise if the unlock amount is too low (less than 10 SUP)
+        unlockAmount = bound(unlockAmount, 10e18, 100_000_000e18);
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
-        unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
-        terminationDelay = uint128(bound(terminationDelay, 4 hours, 1 days));
+        terminationDelay = uint128(bound(terminationDelay, 4 hours, _EARLY_END_DELAY));
         tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
 
-        _helperBobStaking();
-
         // Setup & Start Fontaine
-        (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
+
+        // Create and fund the Fontaine
         address newFontaine = _helperCreateFontaine();
-        address user = makeAddr("user");
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
 
-        uint256 expectedTaxBalance = uint96(taxFlowRate) * unlockPeriod;
-        uint256 expectedUserBalance = uint96(unlockFlowRate) * unlockPeriod;
+        // Initialize the Fontaine
+        IFontaine(newFontaine).initialize(makeAddr("user"), unlockFlowRate, unlockPeriod);
 
-        uint256 tooEarlyEndDate = block.timestamp + unlockPeriod - tooEarlyDelay;
         uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
 
-        vm.warp(tooEarlyEndDate);
+        vm.warp(block.timestamp + unlockPeriod - tooEarlyDelay);
         vm.expectRevert(IFontaine.TOO_EARLY_TO_TERMINATE_UNLOCK.selector);
         IFontaine(newFontaine).terminateUnlock();
 
@@ -103,11 +96,13 @@ contract FontaineTest is SFTest {
         IFontaine(newFontaine).terminateUnlock();
 
         assertApproxEqAbs(
-            bobLocker.getAvailableBalance(), expectedTaxBalance, expectedTaxBalance * 2 / 100, "invalid tax amount"
+            _fluid.balanceOf(makeAddr("user")),
+            uint96(unlockFlowRate) * unlockPeriod,
+            (uint96(unlockFlowRate) * unlockPeriod) * 10 / 100,
+            "Unlocked amount incorrect"
         );
-        assertApproxEqAbs(
-            _fluid.balanceOf(user), expectedUserBalance, expectedUserBalance * 2 / 100, "invalid unlocked amount"
-        );
+
+        assertEq(_fluid.balanceOf(newFontaine), 0, "Fontaine balance should be 0");
     }
 
     function testAccidentalStreamCancel() external {
@@ -121,10 +116,9 @@ contract FontaineTest is SFTest {
         _fluid.transfer(newFontaine, unlockAmount);
 
         address user = makeAddr("user");
-        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(unlockAmount, unlockPeriod);
-        assertEq(taxFlowRate, 0, "tax flow rate shall be 0");
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
 
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, unlockPeriod);
 
         uint256 halfwayUnlockPeriod = block.timestamp + 270 days;
         uint256 afterEndUnlockPeriod = block.timestamp + 542 days;
@@ -147,11 +141,12 @@ contract FontaineTest is SFTest {
         assertEq(_fluid.balanceOf(newFontaine), 0);
     }
 
-    function _helperBobStaking() internal {
-        _helperFundLocker(address(bobLocker), 10_000e18);
-        vm.prank(BOB);
-        bobLocker.stake();
-    }
+    //      __  __     __                   ______                 __  _
+    //     / / / /__  / /___  ___  _____   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / /_/ / _ \/ / __ \/ _ \/ ___/  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / __  /  __/ / /_/ /  __/ /     / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+    //              /_/
 
     function _helperCreateFontaine() internal returns (address newFontaine) {
         newFontaine = address(new BeaconProxy(address(_fontaineBeacon), ""));
@@ -159,21 +154,27 @@ contract FontaineTest is SFTest {
 
     function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
         internal
-        pure
-        returns (int96 taxFlowRate, int96 unlockFlowRate)
+        view
+        returns (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate)
     {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
         uint256 unlockingPercentageBP =
-            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(365 days * _SCALER)));
+            (2000 + ((8000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(_MAX_UNLOCK_PERIOD * _SCALER)));
 
         unlockFlowRate = (globalFlowRate * int256(unlockingPercentageBP)).toInt96() / int256(_BP_DENOMINATOR).toInt96();
-        taxFlowRate = globalFlowRate - unlockFlowRate;
+        int96 taxFlowRate = globalFlowRate - unlockFlowRate;
+
+        // Calculate the tax allocation split between provider and staker
+        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
+
+        providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        stakerFlowRate = taxFlowRate - providerFlowRate;
     }
 }
 
 contract FontaineLayoutTest is Fontaine {
-    constructor() Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0))) { }
+    constructor() Fontaine(ISuperToken(address(0))) { }
 
     function testStorageLayout() external pure {
         uint256 slot;
@@ -187,16 +188,16 @@ contract FontaineLayoutTest is Fontaine {
         }
         require(slot == 0 && offset == 0, "recipient changed location");
 
-        // private state : _taxFlowRate
-        // slot = 0 - offset = 20
-
-        // private state : _unlockFlowRate
-        // slot = 1 - offset = 0
+        assembly {
+            slot := unlockFlowRate.slot
+            offset := unlockFlowRate.offset
+        }
+        require(slot == 0 && offset == 20, "unlockFlowRate changed location");
 
         assembly {
             slot := endDate.slot
             offset := endDate.offset
         }
-        require(slot == 1 && offset == 12, "stakingUnlocksAt changed location");
+        require(slot == 1 && offset == 0, "endDate changed location");
     }
 }

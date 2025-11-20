@@ -14,9 +14,6 @@ import { StakingRewardController, IStakingRewardController } from "../src/Stakin
 using SuperTokenV1Library for ISuperToken;
 
 contract StakingRewardControllerTest is SFTest {
-    // Units downscaler defined in StakingRewardController.sol
-    uint128 private constant _UNIT_DOWNSCALER = 1e16;
-
     function setUp() public override {
         super.setUp();
     }
@@ -24,7 +21,8 @@ contract StakingRewardControllerTest is SFTest {
     function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
         vm.assume(caller != address(0));
         vm.assume(caller != address(_stakingRewardController.taxDistributionPool()));
-        stakingAmount = bound(stakingAmount, 1e16, 10_000_000e18);
+        vm.assume(caller != address(_stakingRewardController.lpDistributionPool()));
+        stakingAmount = bound(stakingAmount, 1e18, 10_000_000e18);
 
         vm.prank(caller);
         vm.expectRevert(IStakingRewardController.NOT_APPROVED_LOCKER.selector);
@@ -41,7 +39,7 @@ contract StakingRewardControllerTest is SFTest {
 
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(caller),
-            stakingAmount / _UNIT_DOWNSCALER,
+            stakingAmount / _STAKING_UNIT_DOWNSCALER,
             "incorrect amount of units"
         );
     }

@@ -72,9 +72,6 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @notice Stores the locker address of a given user address
     mapping(address user => address locker) private _lockers;
 
-    /// @notice Locker creation fee
-    uint256 public lockerCreationFee;
-
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -116,18 +113,12 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
-    function createLockerContract() external payable notPaused returns (address lockerInstance) {
-        // Ensure the correct fee is sent
-        if (msg.value != lockerCreationFee) revert INVALID_FEE();
-
+    function createLockerContract() external notPaused returns (address lockerInstance) {
         lockerInstance = _createLockerContract(msg.sender);
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function createLockerContract(address user) external payable notPaused returns (address lockerInstance) {
-        // Ensure the correct fee is sent
-        if (msg.value != lockerCreationFee) revert INVALID_FEE();
-
+    function createLockerContract(address user) external notPaused returns (address lockerInstance) {
         lockerInstance = _createLockerContract(user);
     }
 
@@ -143,13 +134,11 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function setLockerCreationFee(uint256 newLockerCreationFee) external onlyGovernor {
-        lockerCreationFee = newLockerCreationFee;
-    }
+    function setLockerAddress(address lockerOwner, address lockerInstance) external onlyGovernor {
+        // Prevent assigning a locker to an user without a locker and prevent assigning a zero-address locker to an user
+        if (_lockers[lockerOwner] == address(0) || lockerInstance == address(0)) revert INVALID_PARAMETER();
 
-    /// @inheritdoc IFluidLockerFactory
-    function withdrawETH() external onlyGovernor {
-        payable(governor).transfer(address(this).balance);
+        _lockers[lockerOwner] = lockerInstance;
     }
 
     //   _    ___                 ______                 __  _
@@ -185,13 +174,15 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
      * @param lockerOwner the owner of the Locker to be deployed
      */
     function _createLockerContract(address lockerOwner) internal returns (address lockerInstance) {
+        if (_lockers[lockerOwner] != address(0)) revert LOCKER_ALREADY_EXISTS();
+
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
         _lockers[lockerOwner] = lockerInstance;
 
         // Initialize the new Locker instance
-        FluidLocker(lockerInstance).initialize(lockerOwner);
+        FluidLocker(payable(lockerInstance)).initialize(lockerOwner);
 
         // Approve the newly created locker to interact with the Staking Reward Controller
         STAKING_REWARD_CONTROLLER.approveLocker(lockerInstance);

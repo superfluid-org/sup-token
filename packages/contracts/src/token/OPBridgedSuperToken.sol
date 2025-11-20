@@ -24,7 +24,7 @@
 //                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //                      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import { IOptimismMintableERC20, IERC165 } from "../interfaces/token/IOptimismMintableERC20.sol";
 import { BridgedSuperTokenProxy } from "./BridgedSuperToken.sol";

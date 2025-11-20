@@ -57,8 +57,11 @@ interface IFluidLockerFactory {
     /// @notice Error thrown when the attempting to perform a governance protected operation
     error NOT_GOVERNOR();
 
-    /// @notice Error thrown when the attempting to create a locker while the correct fee is not sent
-    error INVALID_FEE();
+    /// @notice Error thrown when the attempting to create a locker that already exists
+    error LOCKER_ALREADY_EXISTS();
+
+    /// @notice Error thrown when the attempting to set a locker address with an invalid parameter
+    error INVALID_PARAMETER();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -70,14 +73,14 @@ interface IFluidLockerFactory {
      * @notice Deploy a Locker for the caller
      * @return lockerInstance Deployed Locker contract address
      */
-    function createLockerContract() external payable returns (address lockerInstance);
+    function createLockerContract() external returns (address lockerInstance);
 
     /**
      * @notice Deploy a Locker for the given user
      * @param user User address to be associated with the Locker
      * @return lockerInstance Deployed Locker contract address
      */
-    function createLockerContract(address user) external payable returns (address lockerInstance);
+    function createLockerContract(address user) external returns (address lockerInstance);
 
     /**
      * @notice Upgrade this proxy logic
@@ -95,17 +98,12 @@ interface IFluidLockerFactory {
     function setGovernor(address newGovernor) external;
 
     /**
-     * @notice Sets the locker creation fee
+     * @notice Set the locker address for a given user
      * @dev Only the governor address can perform this operation
-     * @param newLockerCreationFee new locker creation fee
+     * @param lockerOwner the owner of the Locker to be set
+     * @param lockerInstance the Locker contract address to be set
      */
-    function setLockerCreationFee(uint256 newLockerCreationFee) external;
-
-    /**
-     * @notice Withdraws the ETH balance of the factory
-     * @dev Only the governor address can perform this operation
-     */
-    function withdrawETH() external;
+    function setLockerAddress(address lockerOwner, address lockerInstance) external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
