@@ -29,6 +29,16 @@ type Locker @entity(immutable: true) {
   """
   lockerOwner: Bytes!
 
+  """
+  Vesting unlock fontaines deployed by this locker.
+  """
+  fontaines: [Fontaine!]! @derivedFrom(field: "locker")
+
+  """
+  Instant unlock executions performed by this locker.
+  """
+  instantUnlocks: [InstantUnlock!]! @derivedFrom(field: "locker")
+
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -77,4 +87,46 @@ type ClaimEventUnit @entity(immutable: true) {
   amount: BigInt! # uint256
 
   event: FluidStreamClaimEvent!
+}
+
+type Fontaine @entity(immutable: true) {
+  """
+  The fontaine contract deployed for a vesting unlock.
+  """
+  id: Bytes!
+
+  locker: Locker!
+
+  """
+  Total amount scheduled to unlock via this fontaine.
+  """
+  amountUnlocked: BigInt!
+
+  """
+  Duration of the vesting unlock.
+  """
+  unlockPeriod: BigInt!
+
+  recipient: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type InstantUnlock @entity(immutable: true) {
+  """
+  Instant unlock operation executed by a locker.
+  """
+  id: Bytes!
+
+  locker: Locker!
+
+  amountUnlocked: BigInt!
+
+  recipient: Bytes!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
 }
