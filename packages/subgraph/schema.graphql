@@ -34,6 +34,16 @@ type Locker @entity(immutable: true) {
   transactionHash: Bytes!
 
   """
+  Vesting unlock fontaines deployed by this locker.
+  """
+  fontaines: [Fontaine!]! @derivedFrom(field: "locker")
+
+  """
+  Instant unlock executions performed by this locker.
+  """
+  instantUnlocks: [InstantUnlock!]! @derivedFrom(field: "locker")
+  
+  """
   Derived field referencing staking data for this locker.
   """
   stakingData: LockerStaking @derivedFrom(field: "locker")
