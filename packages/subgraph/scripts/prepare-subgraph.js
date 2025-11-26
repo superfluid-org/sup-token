@@ -19,11 +19,16 @@ if (!networks[network]) {
   process.exit(1);
 }
 
-// Load template
-const template = fs.readFileSync('subgraph.template.yaml', 'utf8');
+// Load templates
+const subgraphTemplate = fs.readFileSync('subgraph.template.yaml', 'utf8');
+const addressesTemplate = fs.readFileSync('src/addresses.template.ts', 'utf8');
 
 // Generate subgraph.yaml
-const output = mustache.render(template, networks[network]);
-fs.writeFileSync('subgraph.yaml', output);
+const subgraphOutput = mustache.render(subgraphTemplate, networks[network]);
+fs.writeFileSync('subgraph.yaml', subgraphOutput);
 
-console.log(`Generated subgraph.yaml for ${network}`);
+// Generate addresses.ts
+const addressesOutput = mustache.render(addressesTemplate, networks[network]);
+fs.writeFileSync('src/addresses.ts', addressesOutput);
+
+console.log(`Generated subgraph.yaml and src/addresses.ts for ${network}`);

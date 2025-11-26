@@ -1,4 +1,4 @@
-import { BigInt, Address, Bytes, log } from "@graphprotocol/graph-ts";
+import { BigInt, Bytes, log } from "@graphprotocol/graph-ts";
 import {
   FluidStreamClaimEvent,
   ClaimEventUnit,
@@ -19,6 +19,9 @@ import {
   LiquidityPositionBurned as LiquidityPositionBurnedEvent,
   FluidUnlocked as FluidUnlockedEvent
 } from "../generated/templates/FluidLocker/FluidLocker";
+import { INonfungiblePositionManager } from "../generated/templates/FluidLocker/INonfungiblePositionManager";
+import { IUniswapV3Pool } from "../generated/templates/FluidLocker/IUniswapV3Pool";
+import { getUniV3ETHxSUPPoolAddress, getUniV3PositionManagerAddress } from "./addresses";
 
 export function handleFluidStreamClaimed(event: FluidStreamClaimedEvent): void {
   const streamClaimEvent = new FluidStreamClaimEvent(
@@ -231,6 +234,41 @@ export function handleLiquidityPositionCreated(event: LiquidityPositionCreatedEv
   position.burnedAt = null;
   position.burnedBlock = null;
   position.burnedTx = null;
+
+  /*
+  In order to determine the amounts of token0 and token1 provided, we get the liquidity amount from the position
+  and the current price from the pool.
+  Note: This isn't guaranteed to be accurate. The calls are done on the state of the complete block.
+  If there's transactions after this event moving the price, that leads to the token amounts being distorted.
+  It may be possible to get data which is guaranteed to be exact by instead parsing the other events from the
+  transaction receipt, and getting the data from the related `IncreaseLiquidity` event.
+  */
+  
+  let positionManagerAddress = getUniV3PositionManagerAddress();
+  let poolAddress = getUniV3ETHxSUPPoolAddress();
+
+  // Get position data
+  let positionManager = INonfungiblePositionManager.bind(positionManagerAddress);
+  let positionData = positionManager.positions(tokenId);
+  let liquidity = positionData.value7; // liquidity is the 8th return value (0-indexed: 7)
+  
+  // Get current pool price
+  let pool = IUniswapV3Pool.bind(poolAddress);
+  let slot0 = pool.slot0();
+  let sqrtPriceX96 = slot0.value0;
+  
+  // Constants for calculation
+  // Q96 = 2^96 = 79228162514264337593543950336
+  const Q96 = BigInt.fromString("79228162514264337593543950336");
+  const MIN_SQRT_RATIO = BigInt.fromString("4295128739"); // Minimum sqrt ratio
+  
+  let priceDiff = sqrtPriceX96.minus(MIN_SQRT_RATIO);
+  let token1Amount = liquidity.times(priceDiff).div(Q96);
+  let token0Amount = liquidity.times(Q96).div(sqrtPriceX96);
+  
+  position.liquidityAmount = liquidity;
+  position.token0Amount = token0Amount;
+  position.token1Amount = token1Amount;
 
   position.save();
 }

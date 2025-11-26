@@ -12,6 +12,14 @@
     "StakingRewardController": {
       "address": "0xb19Ae25A98d352B36CED60F93db926247535048b",
       "startBlock": 26550970
+    },
+    "UniV3ETHxSUPPool": {
+      "address": "0xBa154BEAa14172fF9384B82499732c669527d85D",
+      "startBlock": 38292131
+    },
+    "UniV3PositionManager": {
+      "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+      "startBlock": 38292131
     }
   },
   "base-sepolia": {
@@ -27,6 +35,14 @@
     "StakingRewardController": {
       "address": "0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018",
       "startBlock": 20496038
+    },
+    "UniV3ETHxSUPPool": {
+      "address": "0xCa2054E3E5A940473DD6dCC4a67ECdfdFa8c0b72",
+      "startBlock": 38292131
+    },
+    "UniV3PositionManager": {
+      "address": "0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2",
+      "startBlock": 38292131
     }
   }
 }
