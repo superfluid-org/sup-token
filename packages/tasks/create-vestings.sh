@@ -50,6 +50,8 @@ tail -n +2 $filename | while IFS=$'\t' read -r type recipient tokens category cl
     index=1
   elif [ "$type" == "3" ]; then
     index=2
+  elif [ "$type" == "4" ]; then
+    index=3
   else
     echo "Error: Invalid type $type for $recipient"
     exit 1
