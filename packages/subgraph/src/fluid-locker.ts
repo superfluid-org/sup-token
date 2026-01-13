@@ -23,6 +23,22 @@ import { INonfungiblePositionManager } from "../generated/templates/FluidLocker/
 import { IUniswapV3Pool } from "../generated/templates/FluidLocker/IUniswapV3Pool";
 import { getUniV3ETHxSUPPoolAddress, getUniV3PositionManagerAddress } from "./addresses";
 
+// Constants for token amount calculation
+// Q96 = 2^96 = 79228162514264337593543950336
+const Q96 = BigInt.fromString("79228162514264337593543950336");
+const MIN_SQRT_RATIO = BigInt.fromString("4295128739"); // Minimum sqrt ratio
+
+// Helper function to calculate token amounts from liquidity and price
+function calculateTokenAmounts(liquidity: BigInt, sqrtPriceX96: BigInt): Array<BigInt> {
+  let priceDiff = sqrtPriceX96.minus(MIN_SQRT_RATIO);
+  let token1Amount = liquidity.times(priceDiff).div(Q96);
+  let token0Amount = liquidity.times(Q96).div(sqrtPriceX96);
+  let amounts = new Array<BigInt>(2);
+  amounts[0] = token0Amount;
+  amounts[1] = token1Amount;
+  return amounts;
+}
+
 export function handleFluidStreamClaimed(event: FluidStreamClaimedEvent): void {
   const streamClaimEvent = new FluidStreamClaimEvent(
     event.transaction.hash.concatI32(event.logIndex.toI32())
@@ -257,18 +273,11 @@ export function handleLiquidityPositionCreated(event: LiquidityPositionCreatedEv
   let slot0 = pool.slot0();
   let sqrtPriceX96 = slot0.value0;
   
-  // Constants for calculation
-  // Q96 = 2^96 = 79228162514264337593543950336
-  const Q96 = BigInt.fromString("79228162514264337593543950336");
-  const MIN_SQRT_RATIO = BigInt.fromString("4295128739"); // Minimum sqrt ratio
-  
-  let priceDiff = sqrtPriceX96.minus(MIN_SQRT_RATIO);
-  let token1Amount = liquidity.times(priceDiff).div(Q96);
-  let token0Amount = liquidity.times(Q96).div(sqrtPriceX96);
+  let amounts = calculateTokenAmounts(liquidity, sqrtPriceX96);
   
   position.liquidityAmount = liquidity;
-  position.token0Amount = token0Amount;
-  position.token1Amount = token1Amount;
+  position.token0AmountProvided = amounts[0];
+  position.token1AmountProvided = amounts[1];
 
   position.save();
 }
@@ -284,6 +293,17 @@ export function handleLiquidityPositionBurned(event: LiquidityPositionBurnedEven
     position.burnedAt = event.block.timestamp;
     position.burnedBlock = event.block.number;
     position.burnedTx = event.transaction.hash;
+
+    // Calculate collected amounts using stored liquidity and current pool price
+    let poolAddress = getUniV3ETHxSUPPoolAddress();
+    let pool = IUniswapV3Pool.bind(poolAddress);
+    let slot0 = pool.slot0();
+    let sqrtPriceX96 = slot0.value0;
+    
+    let amounts = calculateTokenAmounts(position.liquidityAmount, sqrtPriceX96);
+    position.token0AmountCollected = amounts[0];
+    position.token1AmountCollected = amounts[1];
+
     position.save();
   }
 }
