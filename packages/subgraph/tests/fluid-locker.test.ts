@@ -6,18 +6,26 @@ import {
   beforeEach,
   afterEach
 } from "matchstick-as/assembly/index"
-import { Address, BigInt } from "@graphprotocol/graph-ts"
+import { Address, BigInt, Bytes } from "@graphprotocol/graph-ts"
 import { 
   handleFluidStaked, 
   handleFluidUnstaked, 
   handleFluidStreamClaimed,
-  handleFluidStreamClaimedBulk
+  handleFluidStreamClaimedBulk,
+  handleLiquidityPositionCreated
 } from "../src/fluid-locker"
+import {
+  getUniV3PositionManagerAddress,
+  getUniV3ETHxSUPPoolAddress
+} from "../src/addresses"
 import { 
   createFluidStakedEvent, 
   createFluidUnstakedEvent,
   createFluidStreamClaimedEvent,
-  createFluidStreamsClaimedEvent
+  createFluidStreamsClaimedEvent,
+  createLiquidityPositionCreatedEvent,
+  mockPositionManagerPositions,
+  mockPoolSlot0
 } from "./fluid-locker-utils"
 
 describe("FluidLocker Staking Tests", () => {
@@ -284,6 +292,108 @@ describe("FluidLocker Staking Tests", () => {
       assert.fieldEquals("LockerStaking", locker1.toHexString(), "currentStakedBalance", "100")
       assert.fieldEquals("LockerStaking", locker2.toHexString(), "currentStakedBalance", "300")
       assert.fieldEquals("LockerStaking", locker3.toHexString(), "currentStakedBalance", "200")
+    })
+  })
+
+  describe("LiquidityPositionCreated Event Handler", () => {
+    test("Should create LiquidityPosition on position creation", () => {
+      // Use the exact same addresses that the handler will use from addresses.ts
+      let positionManagerAddress = getUniV3PositionManagerAddress()
+      let poolAddress = getUniV3ETHxSUPPoolAddress()
+      
+      let lockerAddress = Address.fromString("0x0000000000000000000000000000000000000001")
+      let tokenId = BigInt.fromI32(123)
+      
+      // Mock contract calls (these will return zero values, causing amounts to be zero)
+      mockPositionManagerPositions(positionManagerAddress, tokenId)
+      mockPoolSlot0(poolAddress)
+      
+      let positionCreatedEvent = createLiquidityPositionCreatedEvent(tokenId)
+      positionCreatedEvent.address = lockerAddress
+      
+      handleLiquidityPositionCreated(positionCreatedEvent)
+
+      // Calculate expected position ID: lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)))
+      let expectedPositionId = lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)))
+      
+      // Check that LiquidityPosition entity was created
+      assert.entityCount("LiquidityPosition", 1)
+      assert.fieldEquals("LiquidityPosition", expectedPositionId.toHexString(), "tokenId", "123")
+      assert.fieldEquals("LiquidityPosition", expectedPositionId.toHexString(), "locker", lockerAddress.toHexString())
+      
+      // Since contract calls will revert in tests, amounts should be zero
+      assert.fieldEquals("LiquidityPosition", expectedPositionId.toHexString(), "liquidityAmount", "0")
+      assert.fieldEquals("LiquidityPosition", expectedPositionId.toHexString(), "token0Amount", "0")
+      assert.fieldEquals("LiquidityPosition", expectedPositionId.toHexString(), "token1Amount", "0")
+    })
+
+    test("Should handle multiple liquidity positions from same locker", () => {
+      // Use the exact same addresses that the handler will use from addresses.ts
+      let positionManagerAddress = getUniV3PositionManagerAddress()
+      let poolAddress = getUniV3ETHxSUPPoolAddress()
+      
+      let lockerAddress = Address.fromString("0x0000000000000000000000000000000000000001")
+      
+      // Create first position
+      let tokenId1 = BigInt.fromI32(1)
+      mockPositionManagerPositions(positionManagerAddress, tokenId1)
+      mockPoolSlot0(poolAddress)
+      let positionCreatedEvent1 = createLiquidityPositionCreatedEvent(tokenId1)
+      positionCreatedEvent1.address = lockerAddress
+      handleLiquidityPositionCreated(positionCreatedEvent1)
+
+      // Create second position
+      let tokenId2 = BigInt.fromI32(2)
+      mockPositionManagerPositions(positionManagerAddress, tokenId2)
+      mockPoolSlot0(poolAddress)
+      let positionCreatedEvent2 = createLiquidityPositionCreatedEvent(tokenId2)
+      positionCreatedEvent2.address = lockerAddress
+      handleLiquidityPositionCreated(positionCreatedEvent2)
+
+      // Check both positions exist
+      assert.entityCount("LiquidityPosition", 2)
+      
+      let expectedPositionId1 = lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId1)))
+      let expectedPositionId2 = lockerAddress.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId2)))
+      
+      assert.fieldEquals("LiquidityPosition", expectedPositionId1.toHexString(), "tokenId", "1")
+      assert.fieldEquals("LiquidityPosition", expectedPositionId2.toHexString(), "tokenId", "2")
+    })
+
+    test("Should handle liquidity positions from different lockers", () => {
+      // Use the exact same addresses that the handler will use from addresses.ts
+      let positionManagerAddress = getUniV3PositionManagerAddress()
+      let poolAddress = getUniV3ETHxSUPPoolAddress()
+      
+      let locker1 = Address.fromString("0x0000000000000000000000000000000000000001")
+      let locker2 = Address.fromString("0x0000000000000000000000000000000000000002")
+      let tokenId = BigInt.fromI32(100)
+      
+      // Mock contract calls for both positions
+      mockPositionManagerPositions(positionManagerAddress, tokenId)
+      mockPoolSlot0(poolAddress)
+      
+      // Create position for locker1
+      let positionCreatedEvent1 = createLiquidityPositionCreatedEvent(tokenId)
+      positionCreatedEvent1.address = locker1
+      handleLiquidityPositionCreated(positionCreatedEvent1)
+
+      // Create position for locker2 (same tokenId, different locker)
+      // Note: We can reuse the same mocks since they're for the same tokenId
+      let positionCreatedEvent2 = createLiquidityPositionCreatedEvent(tokenId)
+      positionCreatedEvent2.address = locker2
+      handleLiquidityPositionCreated(positionCreatedEvent2)
+
+      // Check both positions exist with different IDs
+      assert.entityCount("LiquidityPosition", 2)
+      
+      let expectedPositionId1 = locker1.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)))
+      let expectedPositionId2 = locker2.concat(Bytes.fromByteArray(Bytes.fromBigInt(tokenId)))
+      
+      assert.fieldEquals("LiquidityPosition", expectedPositionId1.toHexString(), "locker", locker1.toHexString())
+      assert.fieldEquals("LiquidityPosition", expectedPositionId2.toHexString(), "locker", locker2.toHexString())
+      assert.fieldEquals("LiquidityPosition", expectedPositionId1.toHexString(), "tokenId", "100")
+      assert.fieldEquals("LiquidityPosition", expectedPositionId2.toHexString(), "tokenId", "100")
     })
   })
 })

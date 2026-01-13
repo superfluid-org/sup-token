@@ -258,6 +258,31 @@ type LiquidityPosition @entity(immutable: false) {
   tokenId: BigInt!
 
   """
+  The liquidity amount at the time of position creation.
+  """
+  liquidityAmount: BigInt!
+
+  """
+  The token0 (ETHx) amount provided at the time of position creation.
+  """
+  token0AmountProvided: BigInt!
+
+  """
+  The token1 (SUP) amount provided at the time of position creation.
+  """
+  token1AmountProvided: BigInt!
+
+  """
+  The token0 (ETHx) amount collected at the time of position burn.
+  """
+  token0AmountCollected: BigInt
+
+  """
+  The token1 (SUP) amount collected at the time of position burn.
+  """
+  token1AmountCollected: BigInt
+
+  """
   Timestamp when the position was created.
   """
   createdAt: BigInt!

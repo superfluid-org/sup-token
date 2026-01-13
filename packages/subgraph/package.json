@@ -1,6 +1,6 @@
 {
   "name": "sup-subgraph",
-  "version": "2.4.1",
+  "version": "2.4.4",
   "scripts": {
     "prepare:base": "node scripts/prepare-subgraph.js base",
     "prepare:base-sepolia": "node scripts/prepare-subgraph.js base-sepolia",

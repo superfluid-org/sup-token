@@ -102,6 +102,10 @@ templates:
           file: ./abis/FluidLocker.json
         - name: Fontaine
           file: ./abis/Fontaine.json
+        - name: INonfungiblePositionManager
+          file: ./abis/INonfungiblePositionManager.json
+        - name: IUniswapV3Pool
+          file: ./abis/IUniswapV3Pool.json
       eventHandlers:
         - event: FluidStreamClaimed(indexed uint256,indexed uint256)
           handler: handleFluidStreamClaimed
