@@ -312,6 +312,12 @@ interface IFluidLocker {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
+     * @notice Returns the net asset value of the locker
+     * @return netAsset the net asset value of the locker
+     */
+    function netAssetOf() external view returns (uint256 netAsset);
+
+    /**
      * @notice Returns the flowrate received by this Locker for the given program identifier
      * @param programId program identifier to query
      * @return flowRate the flowrate received by this Locker for the given program identifier
