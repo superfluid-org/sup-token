@@ -1888,6 +1888,66 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.prank(ADMIN);
         beacon.upgradeTo(_unlockableLockerLogic);
     }
+
+    function test_netAssetOf(uint256 ethAmount, uint256 stakedSupAmount) external {
+        ethAmount = bound(ethAmount, 0.001 ether, 1000 ether);
+        stakedSupAmount = bound(stakedSupAmount, 1 ether, 1_000_000 ether);
+
+        _helperUpgradeLocker();
+
+        uint256 supAmountToLP = ethAmount * 20_000 * 9900 / 10_000;
+
+        _helperFundLocker(address(aliceLocker), supAmountToLP + stakedSupAmount);
+
+        vm.startPrank(ALICE);
+        aliceLocker.stake(stakedSupAmount);
+        aliceLocker.provideLiquidity{ value: ethAmount }(supAmountToLP);
+        vm.stopPrank();
+
+        uint256 expectedSupPumpAmount = ethAmount * 20_000 * 100 / 10_000;
+
+        uint256 netAsset = aliceLocker.netAssetOf();
+
+        assertApproxEqAbs(
+            netAsset,
+            supAmountToLP + expectedSupPumpAmount + stakedSupAmount,
+            netAsset * 10 / 10_000, // 0.1% tolerance
+            "net asset should be approximately equal to the SUP amount in the liquidity positions + the expected SUP pump amount"
+        );
+    }
+
+    function test_getLiquidityPositionsAssets(uint256 ethAmount) external {
+        ethAmount = bound(ethAmount, 0.001 ether, 1000 ether);
+
+        _helperUpgradeLocker();
+
+        uint256 supAmountToLP = ethAmount * 20_000 * 9900 / 10_000;
+
+        _helperFundLocker(address(aliceLocker), supAmountToLP);
+
+        vm.startPrank(ALICE);
+        aliceLocker.provideLiquidity{ value: ethAmount }(supAmountToLP);
+        vm.stopPrank();
+
+        uint256 expectedEthxDumpAmount = ethAmount * 100 / 10_000;
+        uint256 expectedSupPumpAmount = ethAmount * 20_000 * 100 / 10_000;
+
+        (uint256 supAmountInLp, uint256 ethxAmountInLp) = aliceLocker.getLiquidityPositionsAssets();
+
+        assertApproxEqAbs(
+            supAmountInLp,
+            supAmountToLP + expectedSupPumpAmount - _fluidSuperToken.balanceOf(address(aliceLocker)),
+            supAmountInLp * 10 / 10_000, // 0.1% tolerance
+            "sup amount in liquidity positions should be approximately equal to the SUP amount in the liquidity positions + the expected SUP pump amount"
+        );
+
+        assertApproxEqAbs(
+            ethxAmountInLp,
+            ethAmount - expectedEthxDumpAmount,
+            ethxAmountInLp * 10 / 10_000, // 0.1% tolerance
+            "ethx amount in liquidity positions should be approximately equal to the ETH amount in the liquidity positions"
+        );
+    }
 }
 
 contract FluidLockerLayoutTest is FluidLocker {

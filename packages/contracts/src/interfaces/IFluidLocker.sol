@@ -318,6 +318,13 @@ interface IFluidLocker {
     function netAssetOf() external view returns (uint256 netAsset);
 
     /**
+     * @notice Returns the amount of SUP and ETHx in the liquidity positions held by this Locker
+     * @return supAmount the amount of SUP in the liquidity positions
+     * @return ethxAmount the amount of ETHx in the liquidity positions
+     */
+    function getLiquidityPositionsAssets() external view returns (uint256 supAmount, uint256 ethxAmount);
+
+    /**
      * @notice Returns the flowrate received by this Locker for the given program identifier
      * @param programId program identifier to query
      * @return flowRate the flowrate received by this Locker for the given program identifier

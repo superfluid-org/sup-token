@@ -589,6 +589,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function netAssetOf() public view returns (uint256 netAsset) {
+        // Get the amount of SUP in the liquidity positions
+        (uint256 supAmount,) = getLiquidityPositionsAssets();
+
+        // Add the amount of SUP in the position to the balance of FLUID in the locker
+        netAsset = supAmount + FLUID.balanceOf(address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getLiquidityPositionsAssets() public view returns (uint256 supAmount, uint256 ethxAmount) {
         // Get the current price of the SUP/ETHx pool
         (uint160 sqrtPriceX96,,,,,,) = ETH_SUP_POOL.slot0();
 
@@ -597,16 +606,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick((TickMath.MIN_TICK / tickSpacing) * tickSpacing);
         uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick((TickMath.MAX_TICK / tickSpacing) * tickSpacing);
 
-        // Get the amount of SUP and ETHx in the position
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
-        );
-
-        // Get the amount of SUP in the position
-        uint256 supAmount = ETH_SUP_POOL.token0() == address(FLUID) ? amount0 : amount1;
-
-        // Add the amount of SUP in the position to the balance of FLUID in the locker
-        netAsset = supAmount + FLUID.balanceOf(address(this));
+        if (ETH_SUP_POOL.token0() == address(FLUID)) {
+            (supAmount, ethxAmount) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
+            );
+        } else {
+            (ethxAmount, supAmount) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
+            );
+        }
     }
 
     /// @inheritdoc IFluidLocker
