@@ -484,7 +484,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Collect the fees
-        _collect(tokenId, lockerOwner);
+        (, uint256 collectedSup) = _collect(tokenId, address(this));
 
         ISETH ethx =
             ETH_SUP_POOL.token0() == address(FLUID) ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
@@ -500,7 +500,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
-            TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
+            TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup + collectedSup);
+        } else {
+            TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
         }
 
         // Burn the position and delete position tokenId if all liquidity is removed
@@ -523,13 +525,18 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
-        if (ETH_SUP_POOL.token0() == address(FLUID)) {
-            // Collect the fees
-            (collectedSup, collectedEthx) = _collect(tokenId, lockerOwner);
-        } else {
-            // Collect the fees
-            (collectedEthx, collectedSup) = _collect(tokenId, lockerOwner);
-        }
+        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
+
+        (collectedEthx, collectedSup) = _collect(tokenId, address(this));
+
+        // Downgrade the collected ETHx
+        ISETH(ethx).downgradeToETH(collectedEthx);
+
+        // Transfer the downgraded ETHx (ETH) to the locker owner
+        TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+
+        // Transfer the collected SUP to the locker owner
+        TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
     }
 
     /// @inheritdoc IFluidLocker
@@ -592,7 +599,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Get the amount of SUP in the liquidity positions
         (uint256 supAmount,) = getLiquidityPositionsAssets();
 
-        // Add the amount of SUP in the position to the balance of FLUID in the locker
+        // Add the amount of SUP in the position to the balance of SUP in the locker
         netAsset = supAmount + FLUID.balanceOf(address(this));
     }
 
@@ -893,8 +900,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
     ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
-        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
-
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
 
         // construct Decrease Liquidity parameters
@@ -916,19 +921,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         // Collect the tokens owed
-        (uint256 withdrawnAmount0, uint256 withdrawnAmount1) = _collect(tokenId, address(this));
-
-        (withdrawnSupAmount, withdrawnPairedAssetAmount) =
-            _sortOutAmounts(zeroIsSup, withdrawnAmount0, withdrawnAmount1);
+        (withdrawnPairedAssetAmount, withdrawnSupAmount) = _collect(tokenId, address(this));
     }
 
     /**
      * @notice Collects accumulated fees from a Uniswap V3 position
      * @param tokenId The ID of the NFT position to collect fees from
-     * @return amount0 The amount of token0 fees collected
-     * @return amount1 The amount of token1 fees collected
+     * @return collectedEthx The amount of ETHx fees collected
+     * @return collectedSup The amount of SUP fees collected
      */
-    function _collect(uint256 tokenId, address recipient) internal returns (uint256 amount0, uint256 amount1) {
+    function _collect(uint256 tokenId, address recipient)
+        internal
+        returns (uint256 collectedEthx, uint256 collectedSup)
+    {
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams({
             tokenId: tokenId,
             recipient: recipient,
@@ -936,7 +941,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             amount1Max: type(uint128).max
         });
 
-        (amount0, amount1) = NONFUNGIBLE_POSITION_MANAGER.collect(collectParams);
+        (uint256 collectedAmount0, uint256 collectedAmount1) = NONFUNGIBLE_POSITION_MANAGER.collect(collectParams);
+
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
+
+        (collectedSup, collectedEthx) = _sortOutAmounts(zeroIsSup, collectedAmount0, collectedAmount1);
     }
 
     function _formatMintParams(bool zeroIsSup, uint256 pairedAssetAmount, uint256 supAmount)
