@@ -8,11 +8,6 @@
         "internalType": "contract ISuperToken"
       },
       {
-        "name": "taxDistributionPool",
-        "type": "address",
-        "internalType": "contract ISuperfluidPool"
-      },
-      {
         "name": "programManager",
         "type": "address",
         "internalType": "contract IEPProgramManager"
@@ -31,9 +26,76 @@
         "name": "isUnlockAvailable",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "nonfungiblePositionManager",
+        "type": "address",
+        "internalType": "contract INonfungiblePositionManager"
+      },
+      {
+        "name": "ethSupPool",
+        "type": "address",
+        "internalType": "contract IUniswapV3Pool"
+      },
+      {
+        "name": "swapRouter",
+        "type": "address",
+        "internalType": "contract IV3SwapRouter"
+      },
+      {
+        "name": "daoTreasury",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "fallback",
+    "stateMutability": "payable"
+  },
+  {
+    "type": "receive",
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "BP_PUMP_RATIO",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "BP_SLIPPAGE_TOLERANCE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "DAO_TREASURY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -44,6 +106,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IEPProgramManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "ETH_SUP_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IUniswapV3Pool"
       }
     ],
     "stateMutability": "view"
@@ -76,6 +151,71 @@
   },
   {
     "type": "function",
+    "name": "LP_DISTRIBUTION_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LP_OPERATION_DEADLINE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MIN_UNLOCK_AMOUNT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "NONFUNGIBLE_POSITION_MANAGER",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract INonfungiblePositionManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "STAKER_DISTRIBUTION_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "STAKING_REWARD_CONTROLLER",
     "inputs": [],
     "outputs": [
@@ -89,13 +229,39 @@
   },
   {
     "type": "function",
-    "name": "TAX_DISTRIBUTION_POOL",
+    "name": "SWAP_ROUTER",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract ISuperfluidPool"
+        "internalType": "contract IV3SwapRouter"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "TAX_FREE_WITHDRAW_DELAY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UNLOCKING_FEE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -109,6 +275,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "activePositionCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -171,7 +350,87 @@
   },
   {
     "type": "function",
-    "name": "connectToPool",
+    "name": "claimAndStake",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimAndStake",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "collectFees",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "collectedEthx",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "collectedSup",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "connect",
     "inputs": [
       {
         "name": "programId",
@@ -184,12 +443,91 @@
   },
   {
     "type": "function",
-    "name": "disconnectFromPool",
+    "name": "disconnect",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disconnect",
     "inputs": [
       {
         "name": "programId",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disconnectAndClaim",
+    "inputs": [
+      {
+        "name": "programIdsToDisconnect",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "programIdsToClaim",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disconnectAndClaimAndStake",
+    "inputs": [
+      {
+        "name": "programIdsToDisconnect",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "programIdsToClaim",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
@@ -293,6 +631,38 @@
   },
   {
     "type": "function",
+    "name": "getLiquidityBalance",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "lBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getPositionLiquidity",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "liquidity",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getStakedBalance",
     "inputs": [],
     "outputs": [
@@ -383,8 +753,52 @@
   },
   {
     "type": "function",
+    "name": "lpCooldownTimestamps",
+    "inputs": [
+      {
+        "name": "positionTokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "lpCooldownTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "provideLiquidity",
+    "inputs": [
+      {
+        "name": "supAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "positionTokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "stake",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "amountToStake",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -403,8 +817,32 @@
   },
   {
     "type": "function",
+    "name": "taxFreeExitTimestamps",
+    "inputs": [
+      {
+        "name": "positionTokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "taxFreeWithdrawTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "unlock",
     "inputs": [
+      {
+        "name": "unlockAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
       {
         "name": "unlockPeriod",
         "type": "uint128",
@@ -417,12 +855,53 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
     "name": "unstake",
+    "inputs": [
+      {
+        "name": "amountToUnstake",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawDustETH",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawLiquidity",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "liquidityToRemove",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "amount0ToRemove",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount1ToRemove",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -482,7 +961,7 @@
     "name": "FluidStreamsClaimed",
     "inputs": [
       {
-        "name": "programIds",
+        "name": "programId",
         "type": "uint256[]",
         "indexed": true,
         "internalType": "uint256[]"
@@ -530,7 +1009,20 @@
   {
     "type": "event",
     "name": "FluidUnstaked",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "newTotalStakedBalance",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "removedAmount",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
     "anonymous": false
   },
   {
@@ -547,8 +1039,64 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "LiquidityPositionBurned",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LiquidityPositionCreated",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "FORBIDDEN",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INSUFFICIENT_AVAILABLE_BALANCE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INSUFFICIENT_BALANCE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INSUFFICIENT_ETH_SENT",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INSUFFICIENT_STAKED_BALANCE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INSUFFICIENT_UNLOCK_AMOUNT",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INVALID_UNLOCKING_FEE",
     "inputs": []
   },
   {
@@ -563,12 +1111,32 @@
   },
   {
     "type": "error",
-    "name": "NOT_LOCKER_OWNER",
+    "name": "LIQUIDITY_POOL_NOT_APPROVED",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NO_FLUID_TO_STAKE",
+    "name": "LOCKER_HAS_NO_POSITION",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LP_COOLDOWN_NOT_ELAPSED",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LP_DISTRIBUTION_POOL_HAS_NO_UNITS",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MathOverflowedMulDiv",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_LOCKER_OWNER",
     "inputs": []
   },
   {
@@ -593,6 +1161,11 @@
   },
   {
     "type": "error",
+    "name": "STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "STAKING_COOLDOWN_NOT_ELAPSED",
     "inputs": []
   },
@@ -611,11 +1184,6 @@
         "internalType": "int256"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "TAX_DISTRIBUTION_POOL_HAS_NO_UNITS",
-    "inputs": []
   },
   {
     "type": "error",
