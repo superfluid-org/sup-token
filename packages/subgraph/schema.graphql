@@ -1,4 +1,4 @@
-type Program @entity {
+type Program @entity(immutable: false) {
   id: String! # uint256
   programAdmin: Bytes! # address
   signer: Bytes! # address
@@ -32,6 +32,26 @@ type Locker @entity(immutable: true) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
+
+  """
+  Vesting unlock fontaines deployed by this locker.
+  """
+  fontaines: [Fontaine!]! @derivedFrom(field: "locker")
+
+  """
+  Instant unlock executions performed by this locker.
+  """
+  instantUnlocks: [InstantUnlock!]! @derivedFrom(field: "locker")
+  
+  """
+  Derived field referencing staking data for this locker.
+  """
+  stakingData: LockerStaking @derivedFrom(field: "locker")
+
+  """
+  All liquidity positions created by this locker (active and burned).
+  """
+  liquidityPositions: [LiquidityPosition!]! @derivedFrom(field: "locker")
 }
 
 type FluidStreamClaimEvent @entity(immutable: true) {
@@ -77,4 +97,295 @@ type ClaimEventUnit @entity(immutable: true) {
   amount: BigInt! # uint256
 
   event: FluidStreamClaimEvent!
+}
+
+type StakingStats @entity(immutable: false) {
+  """
+  Singleton entity to track global staking statistics.
+  ID is always "global".
+  """
+  id: ID!
+
+  """
+  Current total amount staked across all lockers.
+  """
+  totalStaked: BigInt!
+
+  """
+  Number of lockers that currently have staked balance > 0.
+  """
+  activeStakerCount: BigInt!
+
+  """
+  Total number of lockers that have ever staked (even if currently 0).
+  """
+  totalStakerCount: BigInt!
+
+  """
+  Total number of staking events (stakes + unstakes) across all lockers.
+  """
+  stakingEventCount: BigInt!
+
+  """
+  Timestamp when this entity was last updated.
+  """
+  lastUpdatedTimestamp: BigInt!
+
+  """
+  Block number when this entity was last updated.
+  """
+  lastUpdatedBlock: BigInt!
+
+  # Dynamic Configuration (updated via events)
+  """
+  Tax distribution pool address.
+  """
+  taxDistributionPool: Bytes
+
+  """
+  Staker allocation in basis points (BP = Basis Points, where 10000 BP = 100%).
+  """
+  stakerAllocationBP: BigInt
+
+  """
+  Current staker flow rate from tax distribution.
+  """
+  currentStakerFlowRate: BigInt
+}
+
+type LockerStaking @entity(immutable: false) {
+  """
+  The address of the locker contract.
+  """
+  id: Bytes!
+
+  """
+  Reference to the Locker entity.
+  """
+  locker: Locker!
+
+  """
+  Current amount staked in this locker.
+  """
+  currentStakedBalance: BigInt!
+
+  """
+  Number of staking events for this locker.
+  """
+  stakingEventCount: BigInt!
+
+  """
+  Timestamp when this locker first staked (null if never staked).
+  """
+  firstStakedTimestamp: BigInt
+
+  """
+  Most recent stake timestamp.
+  """
+  lastStakedTimestamp: BigInt
+
+  """
+  Most recent unstake timestamp.
+  """
+  lastUnstakedTimestamp: BigInt
+
+  """
+  Timestamp when this entity was last updated.
+  """
+  lastUpdatedTimestamp: BigInt!
+
+  """
+  Block number when this entity was last updated.
+  """
+  lastUpdatedBlock: BigInt!
+
+  """
+  Current reward units from StakingRewardController.
+  """
+  rewardUnits: BigInt!
+}
+
+enum StakingEventType {
+  STAKE
+  UNSTAKE
+}
+
+type StakingEvent @entity(immutable: true) {
+  """
+  Unique identifier: transaction hash concatenated with log index.
+  """
+  id: Bytes!
+
+  """
+  Reference to the LockerStaking entity this event affects.
+  """
+  lockerStaking: LockerStaking!
+
+  """
+  Type of staking event (STAKE or UNSTAKE).
+  """
+  type: StakingEventType!
+
+  """
+  Amount that was staked or unstaked.
+  """
+  amount: BigInt!
+
+  """
+  The total staked balance for this locker after this event.
+  """
+  newStakedBalance: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type LiquidityPosition @entity(immutable: false) {
+  """
+  The tokenId of the Uniswap V3 position NFT.
+  """
+  id: Bytes!
+
+  """
+  The locker that owns this position.
+  """
+  locker: Locker!
+
+  """
+  The Uniswap V3 NFT token ID.
+  """
+  tokenId: BigInt!
+
+  """
+  The liquidity amount at the time of position creation.
+  """
+  liquidityAmount: BigInt!
+
+  """
+  The token0 (ETHx) amount provided at the time of position creation.
+  """
+  token0AmountProvided: BigInt!
+
+  """
+  The token1 (SUP) amount provided at the time of position creation.
+  """
+  token1AmountProvided: BigInt!
+
+  """
+  The token0 (ETHx) amount collected at the time of position burn.
+  """
+  token0AmountCollected: BigInt
+
+  """
+  The token1 (SUP) amount collected at the time of position burn.
+  """
+  token1AmountCollected: BigInt
+
+  """
+  Timestamp when the position was created.
+  """
+  createdAt: BigInt!
+
+  """
+  Block number when the position was created.
+  """
+  createdBlock: BigInt!
+
+  """
+  Transaction hash where the position was created.
+  """
+  createdTx: Bytes!
+
+  """
+  Timestamp when the position was burned (null if still active).
+  """
+  burnedAt: BigInt
+
+  """
+  Block number when the position was burned (null if still active).
+  """
+  burnedBlock: BigInt
+
+  """
+  Transaction hash where the position was burned (null if still active).
+  """
+  burnedTx: Bytes
+}
+
+type Fontaine @entity(immutable: true) {
+  """
+  The address of the deployed Fontaine contract.
+  """
+  id: Bytes!
+
+  """
+  The locker contract that created this Fontaine.
+  """
+  locker: Locker!
+
+  """
+  The recipient address that will receive the unlocked tokens.
+  """
+  recipient: Bytes!
+
+  """
+  The unlock period in seconds.
+  """
+  unlockPeriod: BigInt!
+
+  """
+  The total amount being unlocked.
+  """
+  unlockAmount: BigInt!
+
+  """
+  The flow rate for the unlock stream.
+  """
+  unlockFlowRate: BigInt!
+
+  """
+  The date at which the unlock is completed.
+  """
+  endDate: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type InstantUnlock @entity(immutable: true) {
+  """
+  Unique identifier: transaction hash concatenated with log index.
+  """
+  id: Bytes!
+
+  """
+  The locker contract that performed this instant unlock.
+  """
+  locker: Locker!
+
+  """
+  The recipient address that received the unlocked tokens.
+  """
+  recipient: Bytes!
+
+  """
+  The total amount that was unlocked (before penalty).
+  """
+  unlockAmount: BigInt!
+
+  """
+  The penalty amount that was distributed to stakers (80% of unlockAmount).
+  """
+  penaltyAmount: BigInt!
+
+  """
+  The net amount received by the recipient (20% of unlockAmount).
+  """
+  netAmount: BigInt!
+
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
 }

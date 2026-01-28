@@ -4,11 +4,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: FluidEPProgramManager
-    network: base
+    network: {{network}}
     source:
       abi: FluidEPProgramManager
-      address: "0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a"
-      startBlock: 26550970
+      address: "{{FluidEPProgramManager.address}}"
+      startBlock: {{FluidEPProgramManager.startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -33,11 +33,11 @@ dataSources:
       file: ./src/fluid-ep-program-manager.ts
   - kind: ethereum
     name: FluidLockerFactory
-    network: base
+    network: {{network}}
     source:
       abi: FluidLockerFactory
-      address: "0xA6694cAB43713287F7735dADc940b555db9d39D9"
-      startBlock: 26550970
+      address: "{{FluidLockerFactory.address}}"
+      startBlock: {{FluidLockerFactory.startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -51,10 +51,35 @@ dataSources:
         - event: LockerCreated(address,address)
           handler: handleLockerCreated
       file: ./src/fluid-locker-factory.ts
+  - kind: ethereum
+    name: StakingRewardController
+    network: {{network}}
+    source:
+      abi: StakingRewardController
+      address: "{{StakingRewardController.address}}"
+      startBlock: {{StakingRewardController.startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - LockerStaking
+        - StakingStats
+      abis:
+        - name: StakingRewardController
+          file: ./abis/StakingRewardController.json
+      eventHandlers:
+        - event: UpdatedStakersUnits(indexed address,indexed uint128)
+          handler: handleUpdatedStakersUnits
+        - event: TaxAllocationUpdated(uint128,uint128)
+          handler: handleTaxAllocationUpdated
+        - event: TaxDistributionFlowUpdated(int96,int96)
+          handler: handleTaxDistributionFlowUpdated
+      file: ./src/staking-reward-controller.ts
 templates:
   - kind: ethereum
     name: FluidLocker
-    network: base
+    network: {{network}}
     source:
       abi: FluidLocker
     mapping:
@@ -66,12 +91,34 @@ templates:
         - FluidStreamClaimEvent
         - ClaimEventUnit
         - Program
+        - StakingStats
+        - LockerStaking
+        - StakingEvent
+        - LiquidityPosition
+        - Fontaine
+        - InstantUnlock
       abis:
         - name: FluidLocker
           file: ./abis/FluidLocker.json
+        - name: Fontaine
+          file: ./abis/Fontaine.json
+        - name: INonfungiblePositionManager
+          file: ./abis/INonfungiblePositionManager.json
+        - name: IUniswapV3Pool
+          file: ./abis/IUniswapV3Pool.json
       eventHandlers:
         - event: FluidStreamClaimed(indexed uint256,indexed uint256)
           handler: handleFluidStreamClaimed
         - event: FluidStreamsClaimed(indexed uint256[],indexed uint256[])
           handler: handleFluidStreamClaimedBulk
+        - event: FluidStaked(indexed uint256,indexed uint256)
+          handler: handleFluidStaked
+        - event: FluidUnstaked(indexed uint256,indexed uint256)
+          handler: handleFluidUnstaked
+        - event: LiquidityPositionCreated(indexed uint256)
+          handler: handleLiquidityPositionCreated
+        - event: LiquidityPositionBurned(indexed uint256)
+          handler: handleLiquidityPositionBurned
+        - event: FluidUnlocked(indexed uint128,indexed uint256,address,indexed address)
+          handler: handleFluidUnlocked
       file: ./src/fluid-locker.ts
