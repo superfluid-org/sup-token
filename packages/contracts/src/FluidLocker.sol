@@ -54,6 +54,7 @@ import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/int
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -585,6 +586,38 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLocker
+    function netAssetOf() public view returns (uint256 netAsset) {
+        // Get the amount of SUP in the liquidity positions
+        (uint256 supAmount,) = getLiquidityPositionsAssets();
+
+        // Add the amount of SUP in the position to the balance of FLUID in the locker
+        netAsset = supAmount + FLUID.balanceOf(address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getLiquidityPositionsAssets() public view returns (uint256 supAmount, uint256 ethxAmount) {
+        // Get the current price of the SUP/ETHx pool
+        // WARNING : this call is subject to MEV and Uniswap price manipulation attacks
+        (uint160 sqrtPriceX96,,,,,,) = ETH_SUP_POOL.slot0();
+
+        // Calculate the lower and upper price bounds 
+        // It is assumed that the liquidity positions are full range
+        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
+        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick((TickMath.MIN_TICK / tickSpacing) * tickSpacing);
+        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick((TickMath.MAX_TICK / tickSpacing) * tickSpacing);
+
+        if (ETH_SUP_POOL.token0() == address(FLUID)) {
+            (supAmount, ethxAmount) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
+            );
+        } else {
+            (ethxAmount, supAmount) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
+            );
+        }
+    }
 
     /// @inheritdoc IFluidLocker
     function getFlowRatePerProgram(uint256 programId) public view returns (int96 flowRate) {

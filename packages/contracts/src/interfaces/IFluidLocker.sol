@@ -312,6 +312,21 @@ interface IFluidLocker {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
+     * @notice Returns the net asset value of the locker
+     * @dev WARNING: This function is not MEV resistant and prone to Uniswap price manipulation attacks.
+     * @return netAsset the net asset value of the locker
+     */
+    function netAssetOf() external view returns (uint256 netAsset);
+
+    /**
+     * @notice Returns the amount of SUP and ETHx in the liquidity positions held by this Locker
+     * @dev WARNING: This function is not MEV resistant and prone to Uniswap price manipulation attacks.
+     * @return supAmount the amount of SUP in the liquidity positions
+     * @return ethxAmount the amount of ETHx in the liquidity positions
+     */
+    function getLiquidityPositionsAssets() external view returns (uint256 supAmount, uint256 ethxAmount);
+
+    /**
      * @notice Returns the flowrate received by this Locker for the given program identifier
      * @param programId program identifier to query
      * @return flowRate the flowrate received by this Locker for the given program identifier
