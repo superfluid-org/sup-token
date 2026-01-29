@@ -13,7 +13,45 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
-// forge script script/upgrades/deploy-locker-upgrade.s.sol:DeployLockerUpgrade --ffi --via-ir --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER
+/**
+ * @title DeployLockerUpgrade
+ * @notice Deployment script for upgrading the FluidLocker implementation
+ *
+ * @dev This script deploys a new FluidLocker implementation contract with updated immutable parameters.
+ *      It includes a safety mechanism to prevent accidental parameter changes.
+ *
+ *      == Deployment Workflow ==
+ *
+ *      1. Update the desired parameter values in `AddressRegistry.sol` for the target network
+ *
+ *      2. For each parameter you intend to change, set the corresponding environment variable to `true`:
+ *         - UPDATE_SUP=true
+ *         - UPDATE_PROGRAM_MANAGER=true
+ *         - UPDATE_STAKING_REWARD_CONTROLLER=true
+ *         - UPDATE_FONTAINE_BEACON=true
+ *         - UPDATE_UNLOCK_AVAILABLE=true
+ *         - UPDATE_NONFUNGIBLE_POSITION_MANAGER=true
+ *         - UPDATE_ETH_SUP_POOL=true
+ *         - UPDATE_SWAP_ROUTER=true
+ *         - UPDATE_DAO_TREASURY=true
+ *
+ *      3. Run the deployment script (see command below)
+ *
+ *      == Safety Mechanism ==
+ *
+ *      The script compares each parameter in `AddressRegistry` against the current live implementation.
+ *      If a parameter differs and the corresponding env var is NOT set, the script reverts.
+ *      This ensures that parameter changes are always intentional and explicitly acknowledged.
+ *
+ *      == Example ==
+ *
+ *      To deploy an upgrade that only changes the DAO treasury address:
+ *      ```
+ *      export UPDATE_DAO_TREASURY=true
+ *      forge script script/upgrades/deploy-locker-upgrade.s.sol:DeployLockerUpgrade \
+ *          --ffi --via-ir --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER
+ *      ```
+ */
 contract DeployLockerUpgrade is SupDeployer {
     function run() public {
         _showGitRevision();
@@ -28,14 +66,16 @@ contract DeployLockerUpgrade is SupDeployer {
         UpgradeableBeacon lockerBeacon = UpgradeableBeacon(lockerParams.lockerBeacon);
         FluidLocker currentLockerImplementation = FluidLocker(payable(lockerBeacon.implementation()));
 
-        // Validate the deployment parameters;
+        // Validate the deployment parameters - will revert in case of inexplicit parameter change
         _validateDeploymentParameters(currentLockerImplementation, lockerParams);
 
-        // Start Deployment :
+        // Start Deployment
         address deployer = _startBroadcast();
 
+        // Log parameters used for deployment
         _logDeploymentParameters(deployer, lockerParams);
 
+        // Deploy the new Locker Implementation
         address newFluidLockerImplementation = address(
             new FluidLocker(
                 ISuperToken(lockerParams.sup),
@@ -50,6 +90,7 @@ contract DeployLockerUpgrade is SupDeployer {
             )
         );
 
+        // Log deployment results
         _logDeploymentResults(newFluidLockerImplementation);
 
         _stopBroadcast();
