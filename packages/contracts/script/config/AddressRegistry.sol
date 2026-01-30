@@ -2,6 +2,11 @@
 pragma solidity ^0.8.23;
 
 library AddressRegistry {
+    struct ProgramManagerDeploymentParameters {
+        address programManager;
+        address taxDistributionPool;
+    }
+
     struct StakingRewardControllerDeploymentParameters {
         address stakingRewardController;
         address sup;
@@ -69,6 +74,20 @@ library AddressRegistry {
         }
     }
 
+    function getProgramManagerDeploymentParameters(uint256 chainId)
+        internal
+        pure
+        returns (ProgramManagerDeploymentParameters memory params)
+    {
+        if (chainId == 8453) {
+            params = getBaseProgramManagerDeploymentParameters();
+        } else if (chainId == 84_532) {
+            params = getBaseSepoliaProgramManagerDeploymentParameters();
+        } else {
+            revert("Unsupported chainId");
+        }
+    }
+
     /**
      * @dev Get Base Mainnet address registry
      */
@@ -110,6 +129,20 @@ library AddressRegistry {
         return StakingRewardControllerDeploymentParameters({
             stakingRewardController: 0xb19Ae25A98d352B36CED60F93db926247535048b,
             sup: 0xa69f80524381275A7fFdb3AE01c54150644c8792
+        });
+    }
+
+    /**
+     * @dev Get Base Mainnet EPProgramManager deployment parameters
+     */
+    function getBaseProgramManagerDeploymentParameters()
+        internal
+        pure
+        returns (ProgramManagerDeploymentParameters memory params)
+    {
+        return ProgramManagerDeploymentParameters({
+            programManager: 0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a,
+            taxDistributionPool: 0xF0f494f4BD2C3A6bF8b49E6f798875301d944C0A
         });
     }
 
@@ -165,6 +198,20 @@ library AddressRegistry {
         });
     }
 
+    /**
+     * @dev Get Base Sepolia EPProgramManager deployment parameters
+     */
+    function getBaseSepoliaProgramManagerDeploymentParameters()
+        internal
+        pure
+        returns (ProgramManagerDeploymentParameters memory params)
+    {
+        return ProgramManagerDeploymentParameters({
+            programManager: 0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706,
+            taxDistributionPool: 0xBed96F4cE618798C286eE8BF7586BD607d491Ce7
+        });
+    }
+
     function getLocalLockerDeploymentParameters() internal pure returns (LockerDeploymentParameters memory addresses) {
         return getBaseLockerDeploymentParameters();
     }
@@ -179,5 +226,13 @@ library AddressRegistry {
         returns (StakingRewardControllerDeploymentParameters memory params)
     {
         return getBaseStakingRewardControllerDeploymentParameters();
+    }
+
+    function getLocalProgramManagerDeploymentParameters()
+        internal
+        pure
+        returns (ProgramManagerDeploymentParameters memory params)
+    {
+        return getBaseProgramManagerDeploymentParameters();
     }
 }
