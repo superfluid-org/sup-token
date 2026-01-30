@@ -2,6 +2,11 @@
 pragma solidity ^0.8.23;
 
 library AddressRegistry {
+    struct FontaineDeploymentParameters {
+        address fontaineBeacon;
+        address sup;
+    }
+
     struct ProgramManagerDeploymentParameters {
         address programManager;
         address taxDistributionPool;
@@ -88,6 +93,20 @@ library AddressRegistry {
         }
     }
 
+    function getFontaineDeploymentParameters(uint256 chainId)
+        internal
+        pure
+        returns (FontaineDeploymentParameters memory params)
+    {
+        if (chainId == 8453) {
+            params = getBaseFontaineDeploymentParameters();
+        } else if (chainId == 84_532) {
+            params = getBaseSepoliaFontaineDeploymentParameters();
+        } else {
+            revert("Unsupported chainId");
+        }
+    }
+
     /**
      * @dev Get Base Mainnet address registry
      */
@@ -143,6 +162,20 @@ library AddressRegistry {
         return ProgramManagerDeploymentParameters({
             programManager: 0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a,
             taxDistributionPool: 0xF0f494f4BD2C3A6bF8b49E6f798875301d944C0A
+        });
+    }
+    
+    /**
+     * @dev Get Base Mainnet Fontaine deployment parameters
+     */
+    function getBaseFontaineDeploymentParameters()
+        internal
+        pure
+        returns (FontaineDeploymentParameters memory params)
+    {
+        return FontaineDeploymentParameters({
+            fontaineBeacon: 0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d,
+            sup: 0xa69f80524381275A7fFdb3AE01c54150644c8792
         });
     }
 
@@ -212,6 +245,21 @@ library AddressRegistry {
         });
     }
 
+
+    /**
+     * @dev Get Base Sepolia Fontaine deployment parameters
+     */
+    function getBaseSepoliaFontaineDeploymentParameters()
+        internal
+        pure
+        returns (FontaineDeploymentParameters memory params)
+    {
+        return FontaineDeploymentParameters({
+            fontaineBeacon: 0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE,
+            sup: 0xFd62b398DD8a233ad37156690631fb9515059d6A
+        });
+    }
+
     function getLocalLockerDeploymentParameters() internal pure returns (LockerDeploymentParameters memory addresses) {
         return getBaseLockerDeploymentParameters();
     }
@@ -234,5 +282,13 @@ library AddressRegistry {
         returns (ProgramManagerDeploymentParameters memory params)
     {
         return getBaseProgramManagerDeploymentParameters();
+    }
+
+    function getLocalFontaineDeploymentParameters()
+        internal
+        pure
+        returns (FontaineDeploymentParameters memory params)
+    {
+        return getBaseFontaineDeploymentParameters();
     }
 }
