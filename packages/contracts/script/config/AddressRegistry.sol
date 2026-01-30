@@ -2,6 +2,11 @@
 pragma solidity ^0.8.23;
 
 library AddressRegistry {
+    struct StakingRewardControllerDeploymentParameters {
+        address stakingRewardController;
+        address sup;
+    }
+
     struct FactoryDeploymentParameters {
         address lockerFactory;
         address lockerBeacon;
@@ -50,6 +55,20 @@ library AddressRegistry {
         }
     }
 
+    function getStakingRewardControllerDeploymentParameters(uint256 chainId)
+        internal
+        pure
+        returns (StakingRewardControllerDeploymentParameters memory params)
+    {
+        if (chainId == 8453) {
+            params = getBaseStakingRewardControllerDeploymentParameters();
+        } else if (chainId == 84_532) {
+            params = getBaseSepoliaStakingRewardControllerDeploymentParameters();
+        } else {
+            revert("Unsupported chainId");
+        }
+    }
+
     /**
      * @dev Get Base Mainnet address registry
      */
@@ -77,6 +96,20 @@ library AddressRegistry {
             lockerBeacon: 0x664161f0974F5B17FB1fD3FDcE5D1679E829176c,
             stakingRewardController: 0xb19Ae25A98d352B36CED60F93db926247535048b,
             isPaused: false
+        });
+    }
+
+    /**
+     * @dev Get Base Mainnet StakingRewardController deployment parameters
+     */
+    function getBaseStakingRewardControllerDeploymentParameters()
+        internal
+        pure
+        returns (StakingRewardControllerDeploymentParameters memory params)
+    {
+        return StakingRewardControllerDeploymentParameters({
+            stakingRewardController: 0xb19Ae25A98d352B36CED60F93db926247535048b,
+            sup: 0xa69f80524381275A7fFdb3AE01c54150644c8792
         });
     }
 
@@ -118,11 +151,33 @@ library AddressRegistry {
         });
     }
 
+    /**
+     * @dev Get Base Sepolia StakingRewardController deployment parameters
+     */
+    function getBaseSepoliaStakingRewardControllerDeploymentParameters()
+        internal
+        pure
+        returns (StakingRewardControllerDeploymentParameters memory params)
+    {
+        return StakingRewardControllerDeploymentParameters({
+            stakingRewardController: 0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018,
+            sup: 0xFd62b398DD8a233ad37156690631fb9515059d6A
+        });
+    }
+
     function getLocalLockerDeploymentParameters() internal pure returns (LockerDeploymentParameters memory addresses) {
         return getBaseLockerDeploymentParameters();
     }
 
     function getLocalFactoryDeploymentParameters() internal pure returns (FactoryDeploymentParameters memory params) {
         return getBaseFactoryDeploymentParameters();
+    }
+
+    function getLocalStakingRewardControllerDeploymentParameters()
+        internal
+        pure
+        returns (StakingRewardControllerDeploymentParameters memory params)
+    {
+        return getBaseStakingRewardControllerDeploymentParameters();
     }
 }
