@@ -2,6 +2,13 @@
 pragma solidity ^0.8.23;
 
 library AddressRegistry {
+    struct FactoryDeploymentParameters {
+        address lockerFactory;
+        address lockerBeacon;
+        address stakingRewardController;
+        bool isPaused;
+    }
+
     struct LockerDeploymentParameters {
         address lockerBeacon;
         address sup;
@@ -29,6 +36,20 @@ library AddressRegistry {
         }
     }
 
+    function getFactoryDeploymentParameters(uint256 chainId)
+        internal
+        pure
+        returns (FactoryDeploymentParameters memory params)
+    {
+        if (chainId == 8453) {
+            params = getBaseFactoryDeploymentParameters();
+        } else if (chainId == 84_532) {
+            params = getBaseSepoliaFactoryDeploymentParameters();
+        } else {
+            revert("Unsupported chainId");
+        }
+    }
+
     /**
      * @dev Get Base Mainnet address registry
      */
@@ -47,8 +68,16 @@ library AddressRegistry {
         });
     }
 
-    function getLocalLockerDeploymentParameters() internal pure returns (LockerDeploymentParameters memory addresses) {
-        return getBaseLockerDeploymentParameters();
+    /**
+     * @dev Get Base Mainnet Factory deployment parameters
+     */
+    function getBaseFactoryDeploymentParameters() internal pure returns (FactoryDeploymentParameters memory params) {
+        return FactoryDeploymentParameters({
+            lockerFactory: 0xA6694cAB43713287F7735dADc940b555db9d39D9,
+            lockerBeacon: 0x664161f0974F5B17FB1fD3FDcE5D1679E829176c,
+            stakingRewardController: 0xb19Ae25A98d352B36CED60F93db926247535048b,
+            isPaused: false
+        });
     }
 
     /**
@@ -71,5 +100,29 @@ library AddressRegistry {
             daoTreasury: 0xe7143e87661418DEA122941e01Fdb3f9Acfd02aB,
             isUnlockAvailable: true
         });
+    }
+
+    /**
+     * @dev Get Base Sepolia Factory deployment parameters
+     */
+    function getBaseSepoliaFactoryDeploymentParameters()
+        internal
+        pure
+        returns (FactoryDeploymentParameters memory params)
+    {
+        return FactoryDeploymentParameters({
+            lockerFactory: 0x897D343D24Ac5b84838B976Cf37036EDEfe3E967,
+            lockerBeacon: 0xf2880c6D68080393C1784f978417a96ab4f37c38,
+            stakingRewardController: 0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018,
+            isPaused: false
+        });
+    }
+
+    function getLocalLockerDeploymentParameters() internal pure returns (LockerDeploymentParameters memory addresses) {
+        return getBaseLockerDeploymentParameters();
+    }
+
+    function getLocalFactoryDeploymentParameters() internal pure returns (FactoryDeploymentParameters memory params) {
+        return getBaseFactoryDeploymentParameters();
     }
 }
