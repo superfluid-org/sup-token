@@ -128,6 +128,14 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to transfer the unlocking fee to the DAO Treasury fails
     error FAILED_TO_TRANSFER_UNLOCKING_FEE();
 
+    /// @notice Error thrown when attempting to set a locker agent while one is already set
+    error LOCKER_AGENT_ALREADY_SET();
+
+    /// @notice Error thrown when a signature is of invalid
+    /// @dev Error Selector : 0x30f01ccf
+    /// @param reason Description of what part of the signature was invalid
+    error INVALID_SIGNATURE(string reason);
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -304,6 +312,14 @@ interface IFluidLocker {
         uint256 nonce,
         bytes memory stackSignature
     ) external;
+
+    /**
+     * @notice Sets the locker owner agent address
+     * @dev Only this Locker owner can call this function
+     * @param agent address of the locker owner agent
+     * @param signature signature verifying the agent's identity
+     */
+    function setLockerOwnerAgent(address agent, bytes calldata signature) external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

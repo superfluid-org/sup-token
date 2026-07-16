@@ -56,6 +56,9 @@ import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/Transf
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
+/* Solady ECDSA Library */
+import { ECDSA } from "solady/utils/ECDSA.sol";
+
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
@@ -161,6 +164,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice DAO Treasury address used to receive the unlocking fee
     address public immutable DAO_TREASURY;
 
+    /// @notice Agent Wallet Verifier address used to verify the locker owner agent
+    address public immutable AGENT_WALLET_VERIFIER;
+
+    /// @notice Signature length requirement (r: 32 bytes, s: 32 bytes, v: 1 byte)
+    uint256 private constant _SIGNATURE_LENGTH = 65;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -199,6 +208,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Aggregated liquidity balance provided by this locker
     uint256 private _liquidityBalance;
 
+    //   _    _______    _____ __        __
+    //  | |  / /__  /   / ___// /_____ _/ /____  _____
+    //  | | / / /_ <    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //  | |/ /___/ /   ___/ / /_/ /_/ / /_/  __(__  )
+    //  |___//____/   /____/\__/\__,_/\__/\___/____/
+
+    /// @notice This locker owner's agent address
+    address public lockerOwnerAgent;
+
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -225,7 +243,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         INonfungiblePositionManager nonfungiblePositionManager,
         IUniswapV3Pool ethSupPool,
         IV3SwapRouter swapRouter,
-        address daoTreasury
+        address daoTreasury,
+        address agentWalletVerifier
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -245,6 +264,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
         ETH_SUP_POOL = ethSupPool;
         DAO_TREASURY = daoTreasury;
+        AGENT_WALLET_VERIFIER = agentWalletVerifier;
     }
 
     /**
@@ -581,6 +601,27 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         _stake(getAvailableBalance());
     }
 
+    /// @inheritdoc IFluidLocker
+    function setLockerOwnerAgent(address agentWallet, bytes calldata signature) external onlyLockerOwner {
+        if (lockerOwnerAgent != address(0)) {
+            revert LOCKER_AGENT_ALREADY_SET();
+        }
+
+        // Verify the signature format
+        if (signature.length != _SIGNATURE_LENGTH) {
+            revert INVALID_SIGNATURE("signature length");
+        }
+
+        bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked(msg.sender, agentWallet)));
+
+        // Verify signature validity
+        if (ECDSA.recover(hash, signature) != AGENT_WALLET_VERIFIER) {
+            revert INVALID_SIGNATURE("signer");
+        }
+
+        lockerOwnerAgent = agentWallet;
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -602,7 +643,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // WARNING : this call is subject to MEV and Uniswap price manipulation attacks
         (uint160 sqrtPriceX96,,,,,,) = ETH_SUP_POOL.slot0();
 
-        // Calculate the lower and upper price bounds 
+        // Calculate the lower and upper price bounds
         // It is assumed that the liquidity positions are full range
         int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
         uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick((TickMath.MIN_TICK / tickSpacing) * tickSpacing);
@@ -1045,10 +1086,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
 
     /**
-     * @dev Throws if called by any account other than the owner
+     * @dev Throws if called by any account other than the owner or their agent
      */
     modifier onlyLockerOwner() {
-        if (msg.sender != lockerOwner) revert NOT_LOCKER_OWNER();
+        if (msg.sender != lockerOwner && msg.sender != lockerOwnerAgent) revert NOT_LOCKER_OWNER();
         _;
     }
 
