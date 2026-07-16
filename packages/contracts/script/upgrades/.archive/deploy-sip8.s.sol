@@ -169,6 +169,7 @@ contract DeploySIP8_PART_II is DeploySIP8 {
         IUniswapV3Pool ethSupPool = IUniswapV3Pool(vm.envAddress("ETH_SUP_POOL_ADDRESS"));
         IV3SwapRouter swapRouter = IV3SwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
         address daoTreasury = vm.envAddress("DAO_TREASURY_ADDRESS");
+        address agentWalletVerifier = vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS");
 
         // Start Deployment :
         address deployer = _startBroadcast();
@@ -183,7 +184,8 @@ contract DeploySIP8_PART_II is DeploySIP8 {
                 nonfungiblePositionManager,
                 ethSupPool,
                 swapRouter,
-                daoTreasury
+                daoTreasury,
+                agentWalletVerifier
             )
         );
 

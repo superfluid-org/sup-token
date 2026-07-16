@@ -271,7 +271,8 @@ contract ProdForkTestSip8 is Test {
                 _nonfungiblePositionManager,
                 IUniswapV3Pool(address(0)),
                 _swapRouter,
-                _DAO_MULTISIG
+                _DAO_MULTISIG,
+                address(0)
             )
         );
         vm.stopPrank();

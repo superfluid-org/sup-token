@@ -34,6 +34,7 @@ struct DeploySettings {
     IV3SwapRouter swapRouter;
     INonfungiblePositionManager nonfungiblePositionManager;
     IUniswapV3Pool ethSupPool;
+    address agentWalletVerifier;
 }
 
 function _deployFontaineBeacon(ISuperToken fluid, address governor)
@@ -65,7 +66,8 @@ function _deployLockerBeacon(
             settings.nonfungiblePositionManager,
             settings.ethSupPool,
             settings.swapRouter,
-            settings.treasury
+            settings.treasury,
+            settings.agentWalletVerifier
         )
     );
     UpgradeableBeacon lockerBeacon = new UpgradeableBeacon(lockerLogicAddress);
@@ -206,6 +208,7 @@ contract DeployScript is Script {
         INonfungiblePositionManager nonfungiblePositionManager =
             INonfungiblePositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER_ADDRESS"));
         IUniswapV3Pool ethSupPool = IUniswapV3Pool(vm.envAddress("ETH_SUP_POOL_ADDRESS"));
+        address agentWalletVerifier = vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS");
 
         // Purposedly not enforcing this at contract level in case governance decides to forfeit ownership of the contracts
         if (governor == address(0)) {
@@ -221,7 +224,8 @@ contract DeployScript is Script {
             unlockStatus: unlockStatus,
             swapRouter: swapRouter,
             nonfungiblePositionManager: nonfungiblePositionManager,
-            ethSupPool: ethSupPool
+            ethSupPool: ethSupPool,
+            agentWalletVerifier: agentWalletVerifier
         });
 
         _logDeploymentSettings(deployer, address(fluid), governor, treasury, factoryPauseStatus, unlockStatus);

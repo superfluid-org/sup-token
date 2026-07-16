@@ -910,7 +910,8 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
                 _nonfungiblePositionManager,
                 _pool,
                 _swapRouter,
-                FLUID_TREASURY
+                FLUID_TREASURY,
+                AGENT_WALLET_VERIFIER
             )
         );
 
@@ -1961,6 +1962,7 @@ contract FluidLockerLayoutTest is FluidLocker {
             INonfungiblePositionManager(address(0)),
             IUniswapV3Pool(address(0)),
             IV3SwapRouter(address(0)),
+            address(0),
             address(0)
         )
     { }

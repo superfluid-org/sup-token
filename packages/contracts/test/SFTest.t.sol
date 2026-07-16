@@ -64,6 +64,7 @@ contract SFTest is Test {
     address public constant CAROL = address(0x3);
     address public constant FLUID_TREASURY = address(0x4);
     address[] internal TEST_ACCOUNTS = [ADMIN, FLUID_TREASURY, ALICE, BOB, CAROL];
+    address public constant AGENT_WALLET_VERIFIER = address(0x5);
 
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
@@ -170,7 +171,8 @@ contract SFTest is Test {
             unlockStatus: LOCKER_CAN_UNLOCK,
             swapRouter: _swapRouter,
             nonfungiblePositionManager: _nonfungiblePositionManager,
-            ethSupPool: _pool
+            ethSupPool: _pool,
+            agentWalletVerifier: AGENT_WALLET_VERIFIER
         });
 
         vm.startPrank(ADMIN);

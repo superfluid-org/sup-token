@@ -86,7 +86,8 @@ contract DeployLockerUpgrade is SupDeployer {
                 INonfungiblePositionManager(lockerParams.uniswapNonFungiblePositionManager),
                 IUniswapV3Pool(lockerParams.uniswapSupEthxPool),
                 IV3SwapRouter(lockerParams.uniswapSwapRouter),
-                lockerParams.daoTreasury
+                lockerParams.daoTreasury,
+                lockerParams.agentWalletVerifier
             )
         );
 

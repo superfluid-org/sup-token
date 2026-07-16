@@ -34,6 +34,7 @@ library AddressRegistry {
         address uniswapSupEthxPool;
         address uniswapSwapRouter;
         address daoTreasury;
+        address agentWalletVerifier;
         bool isUnlockAvailable;
     }
 
@@ -121,6 +122,7 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xBa154BEAa14172fF9384B82499732c669527d85D,
             uniswapSwapRouter: 0x2626664c2603336E57B271c5C0b26F421741e481,
             daoTreasury: 0xac808840f02c47C05507f48165d2222FF28EF4e1,
+            agentWalletVerifier: address(0), // FIXME update with production address
             isUnlockAvailable: true
         });
     }
@@ -164,15 +166,11 @@ library AddressRegistry {
             taxDistributionPool: 0xF0f494f4BD2C3A6bF8b49E6f798875301d944C0A
         });
     }
-    
+
     /**
      * @dev Get Base Mainnet Fontaine deployment parameters
      */
-    function getBaseFontaineDeploymentParameters()
-        internal
-        pure
-        returns (FontaineDeploymentParameters memory params)
-    {
+    function getBaseFontaineDeploymentParameters() internal pure returns (FontaineDeploymentParameters memory params) {
         return FontaineDeploymentParameters({
             fontaineBeacon: 0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d,
             sup: 0xa69f80524381275A7fFdb3AE01c54150644c8792
@@ -197,6 +195,7 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xCa2054E3E5A940473DD6dCC4a67ECdfdFa8c0b72,
             uniswapSwapRouter: 0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4,
             daoTreasury: 0xe7143e87661418DEA122941e01Fdb3f9Acfd02aB,
+            agentWalletVerifier: address(0), // FIXME update with production address
             isUnlockAvailable: true
         });
     }
@@ -244,7 +243,6 @@ library AddressRegistry {
             taxDistributionPool: 0xBed96F4cE618798C286eE8BF7586BD607d491Ce7
         });
     }
-
 
     /**
      * @dev Get Base Sepolia Fontaine deployment parameters
