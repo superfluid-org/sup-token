@@ -24,6 +24,7 @@ import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/int
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { ECDSA } from "solady/utils/ECDSA.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -1775,6 +1776,9 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2withdrawDustETH(address _nonLockerOwner, uint256 ethAmount) external {
         vm.assume(_nonLockerOwner != ALICE);
+        vm.assume(_nonLockerOwner != address(0));
+        vm.assume(_nonLockerOwner != FluidLocker(payable(address(aliceLocker))).lockerOwnerAgent());
+
         ethAmount = uint256(bound(ethAmount, 1, 1_000_000_000 ether));
 
         _helperUpgradeLocker();
@@ -1951,12 +1955,339 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
     }
 }
 
+contract FluidLockerAgentTest is FluidLockerBaseTest {
+    /// @dev secp256k1 curve order (upper bound for valid private keys)
+    uint256 internal constant _SECP256K1_ORDER =
+        115792089237316195423570985008687907852837564279074904382605163141518161494337;
+
+    address internal AGENT;
+
+    function setUp() public virtual override {
+        super.setUp();
+        AGENT = makeAddr("agent");
+    }
+
+    function _helperSetLockerOwnerAgent(IFluidLocker locker, address owner, address agentWallet) internal {
+        bytes memory signature = _helperGenerateAgentSignature(AGENT_WALLET_VERIFIER_PKEY, owner, agentWallet);
+
+        vm.prank(owner);
+        locker.setLockerOwnerAgent(agentWallet, signature);
+    }
+
+    //      _____      __  __                __                ____                          ___                    __
+    //     / ___/___  / /_/ /   ____  ______/ /_____  _____   / __ \_      ______  ___  ____/ _ | ____ ____  ____  / /_
+    //     \__ \/ _ \/ __/ /   / __ \/ ___/ //_/ _ \/ ___/  / / / / | /| / / __ \/ _ \/ ___/ __ |/ __ `/ _ \/ __ \/ __/
+    //    ___/ /  __/ /_/ /___/ /_/ / /__/ ,< /  __/ /     / /_/ /| |/ |/ / / / /  __/ /  / /  | / /_/ /  __/ / / / /_
+    //   /____/\___/\__/_____/\____/\___/_/|_|\___/_/      \____/ |__/|__/_/ /_/\___/_/  /_/   |_\__, /\___/_/ /_/\__/
+    //                                                                                          /____/
+
+    function testSetLockerOwnerAgent(address agentWallet) external {
+        vm.assume(agentWallet != address(0));
+
+        assertEq(
+            FluidLocker(payable(address(aliceLocker))).lockerOwnerAgent(), address(0), "agent should not be set yet"
+        );
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, agentWallet);
+
+        assertEq(FluidLocker(payable(address(aliceLocker))).lockerOwnerAgent(), agentWallet, "agent not correctly set");
+    }
+
+    function testSetLockerOwnerAgent_notLockerOwner(address notOwner) external {
+        vm.assume(notOwner != ALICE && notOwner != address(0));
+
+        // Even a valid verifier-signed signature does not allow a third party to set the agent
+        bytes memory signature = _helperGenerateAgentSignature(AGENT_WALLET_VERIFIER_PKEY, ALICE, AGENT);
+
+        vm.prank(notOwner);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    function testSetLockerOwnerAgent_agentAlreadySet() external {
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+
+        address newAgent = makeAddr("newAgent");
+        bytes memory signature = _helperGenerateAgentSignature(AGENT_WALLET_VERIFIER_PKEY, ALICE, newAgent);
+
+        // The owner cannot rotate the agent once set
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LOCKER_AGENT_ALREADY_SET.selector);
+        aliceLocker.setLockerOwnerAgent(newAgent, signature);
+
+        // The agent cannot replace itself either
+        vm.prank(AGENT);
+        vm.expectRevert(IFluidLocker.LOCKER_AGENT_ALREADY_SET.selector);
+        aliceLocker.setLockerOwnerAgent(newAgent, signature);
+
+        assertEq(FluidLocker(payable(address(aliceLocker))).lockerOwnerAgent(), AGENT, "agent should be unchanged");
+    }
+
+    function testSetLockerOwnerAgent_invalidSignatureLength(bytes memory signature) external {
+        vm.assume(signature.length != 65);
+
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IFluidLocker.INVALID_SIGNATURE.selector, "signature length"));
+        aliceLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    function testSetLockerOwnerAgent_invalidSigner(uint256 attackerPkey) external {
+        attackerPkey = bound(attackerPkey, 1, _SECP256K1_ORDER - 1);
+        vm.assume(attackerPkey != AGENT_WALLET_VERIFIER_PKEY);
+
+        bytes memory signature = _helperGenerateAgentSignature(attackerPkey, ALICE, AGENT);
+
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IFluidLocker.INVALID_SIGNATURE.selector, "signer"));
+        aliceLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    function testSetLockerOwnerAgent_malformedSignature() external {
+        // 65 zero-bytes : correct length but unrecoverable (Solady ECDSA reverts with `InvalidSignature()`)
+        bytes memory signature = new bytes(65);
+
+        vm.prank(ALICE);
+        vm.expectRevert(ECDSA.InvalidSignature.selector);
+        aliceLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    function testSetLockerOwnerAgent_signatureNotReplayableAcrossOwners() external {
+        // A signature issued for ALICE cannot be replayed by BOB on his own locker
+        bytes memory signature = _helperGenerateAgentSignature(AGENT_WALLET_VERIFIER_PKEY, ALICE, AGENT);
+
+        vm.prank(BOB);
+        vm.expectRevert(abi.encodeWithSelector(IFluidLocker.INVALID_SIGNATURE.selector, "signer"));
+        bobLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    function testSetLockerOwnerAgent_signatureBoundToAgent() external {
+        // A signature issued for a given agent wallet cannot be used to set a different agent wallet
+        address otherAgent = makeAddr("otherAgent");
+        bytes memory signature = _helperGenerateAgentSignature(AGENT_WALLET_VERIFIER_PKEY, ALICE, otherAgent);
+
+        vm.prank(ALICE);
+        vm.expectRevert(abi.encodeWithSelector(IFluidLocker.INVALID_SIGNATURE.selector, "signer"));
+        aliceLocker.setLockerOwnerAgent(AGENT, signature);
+    }
+
+    //     ___                    __     ____                        __  _
+    //    /   | ____ ____  ____  / /_   / __ \____  ___  _________ _/ /_(_)___  ____  _____
+    //   / /| |/ __ `/ _ \/ __ \/ __/  / / / / __ \/ _ \/ ___/ __ `/ __/ / __ \/ __ \/ ___/
+    //  / ___ / /_/ /  __/ / / / /_   / /_/ / /_/ /  __/ /  / /_/ / /_/ / /_/ / / / (__  )
+    // /_/  |_\__, /\___/_/ /_/\__/   \____/ .___/\___/_/   \__,_/\__/_/\____/_/ /_/____/
+    //       /____/                       /_/
+
+    function testAgentCanStakeAndUnstake(uint256 amountToStake) external {
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        vm.prank(AGENT);
+        aliceLocker.stake(amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(aliceLocker.getAvailableBalance(), 0, "Available balance should be 0");
+
+        vm.prank(AGENT);
+        vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.unstake(amountToStake);
+
+        vm.warp(block.timestamp + _STAKING_COOLDOWN_PERIOD);
+
+        vm.prank(AGENT);
+        aliceLocker.unstake(amountToStake);
+
+        assertEq(aliceLocker.getStakedBalance(), 0, "Staked balance should be 0");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake, "Available balance should be `amountToStake`");
+    }
+
+    function testAgentCanClaimAndStake(uint256 units, uint256 amountToStake) external {
+        units = bound(units, 1, 1_000_000);
+        amountToStake = bound(amountToStake, 1 ether, 100_000_000 ether);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+
+        // The stack signature remains bound to the locker owner (ALICE), not the agent
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        vm.prank(AGENT);
+        aliceLocker.claimAndStake(PROGRAM_0, units, nonce, signature);
+
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "Staked balance should be `amountToStake`");
+        assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+    }
+
+    function testAgentCanConnectAndDisconnect(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        vm.prank(BOB);
+        _programManager.updateUserUnits(ALICE, PROGRAM_0, units, nonce, signature);
+
+        vm.prank(AGENT);
+        aliceLocker.connect(PROGRAM_0);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "locker should be connected to the program pool"
+        );
+
+        vm.prank(AGENT);
+        aliceLocker.disconnect(PROGRAM_0);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "locker should be disconnected from the program pool"
+        );
+    }
+
+    function testAgentCanInstantUnlock(uint256 unlockAmount) external {
+        unlockAmount = bound(unlockAmount, 10e18, 1_000_000e18);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+        _helperFundLocker(address(aliceLocker), unlockAmount);
+
+        // Ensure the tax distribution pools have units
+        _helperLockerStake(address(bobLocker));
+        _helperLockerProvideLiquidity(address(carolLocker));
+
+        uint256 unlockingFee = FluidLocker(payable(address(aliceLocker))).UNLOCKING_FEE();
+        vm.deal(AGENT, unlockingFee);
+
+        uint256 aliceBalanceBefore = _fluidSuperToken.balanceOf(ALICE);
+
+        (uint256 amountToUser,,) = _helperCalculateTaxDisitrutionInstantUnlock(unlockAmount);
+
+        // The agent can trigger the unlock but funds are only directed via the explicit recipient argument
+        vm.prank(AGENT);
+        aliceLocker.unlock{ value: unlockingFee }(unlockAmount, 0, ALICE);
+
+        assertEq(
+            _fluidSuperToken.balanceOf(ALICE),
+            aliceBalanceBefore + amountToUser,
+            "incorrect ALICE balance after agent-triggered instant unlock"
+        );
+        assertEq(_fluidSuperToken.balanceOf(AGENT), 0, "agent should not receive any SUP");
+    }
+
+    function testAgentCanProvideAndWithdrawLiquidity(uint256 ethAmount) external {
+        ethAmount = bound(ethAmount, 0.001 ether, 1000 ether);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+
+        uint256 supAmountToLP = ethAmount * 20_000 * 9900 / 10_000;
+        _helperFundLocker(address(aliceLocker), supAmountToLP);
+
+        vm.deal(AGENT, ethAmount);
+
+        vm.prank(AGENT);
+        aliceLocker.provideLiquidity{ value: ethAmount }(supAmountToLP);
+
+        uint256 positionCount = FluidLocker(payable(address(aliceLocker))).activePositionCount();
+        assertEq(positionCount, 1, "position count should be 1");
+
+        uint256 positionTokenId =
+            _nonfungiblePositionManager.tokenOfOwnerByIndex(address(aliceLocker), positionCount - 1);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
+
+        uint256 aliceEthBalanceBefore = ALICE.balance;
+        uint256 agentEthBalanceBefore = AGENT.balance;
+
+        vm.prank(AGENT);
+        aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        // The withdrawn ETH is transferred to the locker owner, not to the agent triggering the withdrawal
+        assertGt(ALICE.balance, aliceEthBalanceBefore, "ALICE ETH balance should increase");
+        assertEq(AGENT.balance, agentEthBalanceBefore, "AGENT ETH balance should not change");
+        assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
+    }
+
+    function testAgentCanWithdrawDustETH(uint256 ethAmount) external {
+        ethAmount = bound(ethAmount, 1, 1_000_000 ether);
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+
+        vm.deal(address(aliceLocker), ethAmount);
+
+        uint256 aliceEthBalanceBefore = ALICE.balance;
+
+        vm.prank(AGENT);
+        aliceLocker.withdrawDustETH();
+
+        // The dust ETH is transferred to the locker owner, not to the agent triggering the withdrawal
+        assertEq(ALICE.balance, aliceEthBalanceBefore + ethAmount, "ALICE ETH balance should increase");
+        assertEq(AGENT.balance, 0, "AGENT ETH balance should not change");
+    }
+
+    function testNonAgentStillCannotOperate(address caller) external {
+        vm.assume(caller != ALICE && caller != AGENT && caller != address(0));
+
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+        _helperFundLocker(address(aliceLocker), 10_000e18);
+
+        vm.prank(caller);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.stake(10_000e18);
+
+        // The owner is unaffected by the agent being set
+        vm.prank(ALICE);
+        aliceLocker.stake(10_000e18);
+
+        assertEq(aliceLocker.getStakedBalance(), 10_000e18, "Staked balance should be 10_000e18");
+    }
+
+    function testCannotOperateWhenNoAgentIsSet(address caller) external {
+        vm.assume(caller != ALICE && caller != address(0));
+
+        _helperFundLocker(address(aliceLocker), 10_000e18);
+
+        vm.prank(caller);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.stake(10_000e18);
+    }
+
+    function testAgentOfOneLockerCannotOperateAnotherLocker() external {
+        _helperSetLockerOwnerAgent(aliceLocker, ALICE, AGENT);
+        _helperFundLocker(address(bobLocker), 10_000e18);
+
+        // ALICE's agent has no power over BOB's locker
+        vm.prank(AGENT);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        bobLocker.stake(10_000e18);
+    }
+}
+
+/// @dev Minimal mock allowing the FluidLocker constructor to run with zero-addresses
+contract MockStakingRewardController {
+    function lpDistributionPool() external pure returns (address) {
+        return address(0);
+    }
+
+    function taxDistributionPool() external pure returns (address) {
+        return address(0);
+    }
+}
+
 contract FluidLockerLayoutTest is FluidLocker {
     constructor()
         FluidLocker(
             ISuperToken(address(0)),
             IEPProgramManager(address(0)),
-            IStakingRewardController(address(0)),
+            IStakingRewardController(address(new MockStakingRewardController())),
             address(0),
             true,
             INonfungiblePositionManager(address(0)),
@@ -1966,6 +2297,19 @@ contract FluidLockerLayoutTest is FluidLocker {
             address(0)
         )
     { }
+
+    function testLockerOwnerAgentStorageLayout() external pure {
+        uint256 slot;
+        uint256 offset;
+
+        // V3 storage : lockerOwnerAgent must be appended after the V2 storage
+        // (V1 : slots 0-2, V2 : slots 3-6)
+        assembly {
+            slot := lockerOwnerAgent.slot
+            offset := lockerOwnerAgent.offset
+        }
+        require(slot == 7 && offset == 0, "lockerOwnerAgent changed location");
+    }
 
     // function testStorageLayout() external pure {
     //     uint256 slot;
