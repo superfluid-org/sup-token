@@ -64,7 +64,8 @@ contract SFTest is Test {
     address public constant CAROL = address(0x3);
     address public constant FLUID_TREASURY = address(0x4);
     address[] internal TEST_ACCOUNTS = [ADMIN, FLUID_TREASURY, ALICE, BOB, CAROL];
-    address public constant AGENT_WALLET_VERIFIER = address(0x5);
+    uint256 public constant AGENT_WALLET_VERIFIER_PKEY = 0xA6E47;
+    address public immutable AGENT_WALLET_VERIFIER = vm.addr(AGENT_WALLET_VERIFIER_PKEY);
 
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
@@ -252,6 +253,17 @@ contract SFTest is Test {
         bytes32 message = keccak256(abi.encodePacked(_locker, _unitsToGrant, _programIds, _nonce));
 
         bytes32 digest = message.toEthSignedMessageHash();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+        signature = abi.encodePacked(r, s, v);
+    }
+
+    function _helperGenerateAgentSignature(uint256 _signerPkey, address _lockerOwner, address _agentWallet)
+        internal
+        pure
+        returns (bytes memory signature)
+    {
+        bytes32 digest = keccak256(abi.encodePacked(_lockerOwner, _agentWallet)).toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
         signature = abi.encodePacked(r, s, v);
