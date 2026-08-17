@@ -86,8 +86,7 @@ contract DeployLockerUpgrade is SupDeployer {
                 INonfungiblePositionManager(lockerParams.uniswapNonFungiblePositionManager),
                 IUniswapV3Pool(lockerParams.uniswapSupEthxPool),
                 IV3SwapRouter(lockerParams.uniswapSwapRouter),
-                lockerParams.daoTreasury,
-                lockerParams.agentWalletVerifier
+                lockerParams.daoTreasury
             )
         );
 
@@ -122,7 +121,6 @@ contract DeployLockerUpgrade is SupDeployer {
      *      - UPDATE_ETH_SUP_POOL: Skip ETH/SUP Uniswap V3 Pool address validation
      *      - UPDATE_SWAP_ROUTER: Skip Uniswap V3 Swap Router address validation
      *      - UPDATE_DAO_TREASURY: Skip DAO Treasury address validation
-     *      - UPDATE_AGENT_WALLET_VERIFIER: Skip Agent Wallet Verifier address validation
      *
      * @param lockerImpl The current FluidLocker implementation to validate against
      * @param lockerParams The address lockerParams containing the new deployment parameters
@@ -186,10 +184,6 @@ contract DeployLockerUpgrade is SupDeployer {
 
         if (_shouldCheckParam("UPDATE_DAO_TREASURY")) {
             require(lockerImpl.DAO_TREASURY() == lockerParams.daoTreasury, "DaoTreasury is not meant to be updated");
-        }
-
-        if (_shouldCheckParam("UPDATE_AGENT_WALLET_VERIFIER")) {
-            require(lockerImpl.AGENT_WALLET_VERIFIER() == lockerParams.agentWalletVerifier, "AgentWalletVerifier is not meant to be updated");
         }
     }
 

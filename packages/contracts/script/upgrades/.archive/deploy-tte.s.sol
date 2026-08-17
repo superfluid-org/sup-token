@@ -101,7 +101,10 @@ contract DeployTTE_PART_I is DeployTTE {
 
         address newFluidLockerFactoryLogicAddress = address(
             new FluidLockerFactory(
-                lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), pauseStatus
+                lockerBeaconAddress,
+                IStakingRewardController(stakingRewardControllerProxyAddress),
+                pauseStatus,
+                vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS")
             )
         );
         address newFontaineLogicAddress = address(new Fontaine(sup));
@@ -161,7 +164,6 @@ contract DeployTTE_PART_II is DeployTTE {
         IUniswapV3Pool ethSupPool = IUniswapV3Pool(vm.envAddress("ETH_SUP_POOL_ADDRESS"));
         IV3SwapRouter swapRouter = IV3SwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
         address daoTreasury = vm.envAddress("DAO_TREASURY_ADDRESS");
-        address agentWalletVerifier = vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS");
 
         // Start Deployment :
         address deployer = _startBroadcast();
@@ -176,8 +178,7 @@ contract DeployTTE_PART_II is DeployTTE {
                 nonfungiblePositionManager,
                 ethSupPool,
                 swapRouter,
-                daoTreasury,
-                agentWalletVerifier
+                daoTreasury
             )
         );
 

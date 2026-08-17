@@ -66,8 +66,7 @@ function _deployLockerBeacon(
             settings.nonfungiblePositionManager,
             settings.ethSupPool,
             settings.swapRouter,
-            settings.treasury,
-            settings.agentWalletVerifier
+            settings.treasury
         )
     );
     UpgradeableBeacon lockerBeacon = new UpgradeableBeacon(lockerLogicAddress);
@@ -111,11 +110,15 @@ function _deployLockerFactory(
     bool factoryPauseStatus,
     address governor,
     address lockerBeaconAddress,
-    address stakingRewardControllerProxyAddress
+    address stakingRewardControllerProxyAddress,
+    address agentWalletVerifier
 ) returns (address lockerFactoryLogicAddress, address lockerFactoryProxyAddress) {
     // Deploy the Fluid Locker Factory contract
     FluidLockerFactory lockerFactoryLogic = new FluidLockerFactory(
-        lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), factoryPauseStatus
+        lockerBeaconAddress,
+        IStakingRewardController(stakingRewardControllerProxyAddress),
+        factoryPauseStatus,
+        agentWalletVerifier
     );
 
     lockerFactoryLogicAddress = address(lockerFactoryLogic);
@@ -165,7 +168,8 @@ function _deployAll(DeploySettings memory settings) returns (DeployedContracts m
         settings.factoryPauseStatus,
         settings.governor,
         deployedContracts.lockerBeaconAddress,
-        deployedContracts.stakingRewardControllerProxyAddress
+        deployedContracts.stakingRewardControllerProxyAddress,
+        settings.agentWalletVerifier
     );
 
     // Sets the FluidLockerFactory address in the StakingRewardController

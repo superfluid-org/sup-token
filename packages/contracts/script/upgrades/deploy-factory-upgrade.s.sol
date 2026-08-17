@@ -16,6 +16,7 @@ pragma solidity ^0.8.23;
  *         - UPDATE_LOCKER_BEACON=true
  *         - UPDATE_STAKING_REWARD_CONTROLLER=true
  *         - UPDATE_IS_PAUSED=true
+ *         - UPDATE_AGENT_WALLET_VERIFIER=true
  *
  *      3. Run the deployment script (see command below)
  *
@@ -67,7 +68,8 @@ contract DeployFactoryUpgrade is SupDeployer {
             new FluidLockerFactory(
                 factoryParams.lockerBeacon,
                 IStakingRewardController(factoryParams.stakingRewardController),
-                factoryParams.isPaused
+                factoryParams.isPaused,
+                factoryParams.agentWalletVerifier
             )
         );
 
@@ -121,6 +123,15 @@ contract DeployFactoryUpgrade is SupDeployer {
         if (_shouldCheckParam("UPDATE_IS_PAUSED")) {
             require(factoryImpl.IS_PAUSED() == factoryParams.isPaused, "IsPaused is not meant to be updated");
         }
+
+        // NOTE: this call reverts on implementations predating the Agent Wallet Verifier -
+        // set UPDATE_AGENT_WALLET_VERIFIER=true for the upgrade introducing it
+        if (_shouldCheckParam("UPDATE_AGENT_WALLET_VERIFIER")) {
+            require(
+                factoryImpl.AGENT_WALLET_VERIFIER() == factoryParams.agentWalletVerifier,
+                "AgentWalletVerifier is not meant to be updated"
+            );
+        }
     }
 
     function _logDeploymentParameters(
@@ -137,6 +148,7 @@ contract DeployFactoryUpgrade is SupDeployer {
         console2.log("| LOCKER_BEACON_ADDRESS                   : %s", factoryParams.lockerBeacon);
         console2.log("| STAKING_REWARD_CONTROLLER_ADDRESS       : %s", factoryParams.stakingRewardController);
         console2.log("| IS_PAUSED                               : %s", factoryParams.isPaused);
+        console2.log("| AGENT_WALLET_VERIFIER_ADDRESS           : %s", factoryParams.agentWalletVerifier);
         console2.log("|                                                                                    ");
         console2.log("*------------------------------------------------------------------------------------------*");
     }

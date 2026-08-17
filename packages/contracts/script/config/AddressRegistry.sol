@@ -22,6 +22,7 @@ library AddressRegistry {
         address lockerBeacon;
         address stakingRewardController;
         bool isPaused;
+        address agentWalletVerifier;
     }
 
     struct LockerDeploymentParameters {
@@ -34,7 +35,6 @@ library AddressRegistry {
         address uniswapSupEthxPool;
         address uniswapSwapRouter;
         address daoTreasury;
-        address agentWalletVerifier;
         bool isUnlockAvailable;
     }
 
@@ -122,7 +122,6 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xBa154BEAa14172fF9384B82499732c669527d85D,
             uniswapSwapRouter: 0x2626664c2603336E57B271c5C0b26F421741e481,
             daoTreasury: 0xac808840f02c47C05507f48165d2222FF28EF4e1,
-            agentWalletVerifier: address(0), // FIXME update with production address
             isUnlockAvailable: true
         });
     }
@@ -135,8 +134,9 @@ library AddressRegistry {
             lockerFactory: 0xA6694cAB43713287F7735dADc940b555db9d39D9,
             lockerBeacon: 0x664161f0974F5B17FB1fD3FDcE5D1679E829176c,
             stakingRewardController: 0xb19Ae25A98d352B36CED60F93db926247535048b,
-            isPaused: false
-        });
+            isPaused: false,
+            agentWalletVerifier: address(0) // FIXME update with production address
+         });
     }
 
     /**
@@ -195,7 +195,6 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xCa2054E3E5A940473DD6dCC4a67ECdfdFa8c0b72,
             uniswapSwapRouter: 0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4,
             daoTreasury: 0xe7143e87661418DEA122941e01Fdb3f9Acfd02aB,
-            agentWalletVerifier: address(0), // FIXME update with production address
             isUnlockAvailable: true
         });
     }
@@ -212,8 +211,9 @@ library AddressRegistry {
             lockerFactory: 0x897D343D24Ac5b84838B976Cf37036EDEfe3E967,
             lockerBeacon: 0xf2880c6D68080393C1784f978417a96ab4f37c38,
             stakingRewardController: 0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018,
-            isPaused: false
-        });
+            isPaused: false,
+            agentWalletVerifier: address(0) // FIXME update with production address
+         });
     }
 
     /**
