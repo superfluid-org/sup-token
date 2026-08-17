@@ -258,15 +258,23 @@ contract SFTest is Test {
         signature = abi.encodePacked(r, s, v);
     }
 
-    function _helperGenerateAgentSignature(uint256 _signerPkey, address _lockerOwner, address _agentWallet)
+    function _helperGenerateLinkSignature(uint256 _signerPkey, address _lockerOwner, address _wallet)
         internal
         pure
         returns (bytes memory signature)
     {
-        bytes32 digest = keccak256(abi.encodePacked(_lockerOwner, _agentWallet)).toEthSignedMessageHash();
+        bytes32 digest = keccak256(abi.encodePacked(_lockerOwner, _wallet)).toEthSignedMessageHash();
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
         signature = abi.encodePacked(r, s, v);
+    }
+
+    function _helperLinkWallet(address owner, address wallet, uint256 walletPkey) internal {
+        bytes memory verifierSignature = _helperGenerateLinkSignature(AGENT_WALLET_VERIFIER_PKEY, owner, wallet);
+        bytes memory walletSignature = _helperGenerateLinkSignature(walletPkey, owner, wallet);
+
+        vm.prank(owner);
+        _fluidLockerFactory.linkWallet(wallet, verifierSignature, walletSignature);
     }
 
     function _helperDistributeToProgramPool(uint256 programId, uint256 amount, uint256 period)
