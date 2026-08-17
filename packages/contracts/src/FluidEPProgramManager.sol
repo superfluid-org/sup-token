@@ -606,6 +606,8 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         if (locker == address(0)) revert LOCKER_NOT_FOUND();
 
         // Update the locker's units in the program GDA pool
+        // NOTE : when the locker owner has a linked SF wallet, the signed total is expected to
+        // already cover both addresses' points (the backend aggregates them off-chain)
         program.distributionPool.updateMemberUnits(locker, uint128(stackPoints));
     }
 
