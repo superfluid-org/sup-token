@@ -602,7 +602,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // WARNING : this call is subject to MEV and Uniswap price manipulation attacks
         (uint160 sqrtPriceX96,,,,,,) = ETH_SUP_POOL.slot0();
 
-        // Calculate the lower and upper price bounds 
+        // Calculate the lower and upper price bounds
         // It is assumed that the liquidity positions are full range
         int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
         uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick((TickMath.MIN_TICK / tickSpacing) * tickSpacing);

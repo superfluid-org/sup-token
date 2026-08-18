@@ -24,6 +24,7 @@ import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/int
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -1950,12 +1951,114 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
     }
 }
 
+contract FluidLockerLinkedWalletTest is FluidLockerBaseTest {
+    address internal WALLET;
+    uint256 internal WALLET_PKEY;
+
+    function setUp() public virtual override {
+        super.setUp();
+        (WALLET, WALLET_PKEY) = makeAddrAndKey("sfWallet");
+    }
+
+    //     ________      _
+    //    / ____/ /___ _(_)___ ___  _____
+    //   / /   / / __ `/ / __ `__ \\/ ___/
+    //  / /___/ / /_/ / / / / / / (__  )
+    //  \\____/_/\\__,_/_/_/ /_/ /_/____/
+
+    function testOwnerClaimsAggregatedTotal(uint256 ownerPoints, uint256 walletPoints) external {
+        ownerPoints = bound(ownerPoints, 1, 1_000_000);
+        walletPoints = bound(walletPoints, 1, 1_000_000);
+
+        _helperLinkWallet(ALICE, WALLET, WALLET_PKEY);
+
+        // The backend aggregates both addresses' points off-chain and signs
+        // a single total bound to the locker owner
+        uint256 aggregatedPoints = ownerPoints + walletPoints;
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, aggregatedPoints, PROGRAM_0, nonce);
+
+        // Either party can submit the claim - here the linked wallet does
+        vm.prank(WALLET);
+        aliceLocker.claim(PROGRAM_0, aggregatedPoints, nonce, signature);
+
+        assertEq(programPools[0].getUnits(address(aliceLocker)), aggregatedPoints, "units not updated");
+    }
+
+    function testLinkedWalletCannotClaimUnderItsOwnAddress(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
+
+        _helperLinkWallet(ALICE, WALLET, WALLET_PKEY);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, WALLET);
+        bytes memory signature = _helperGenerateSignature(signerPkey, WALLET, units, PROGRAM_0, nonce);
+
+        // A linked wallet has no locker of its own : its points are only claimable
+        // through the owner's aggregated claim
+        vm.prank(WALLET);
+        vm.expectRevert(FluidEPProgramManager.LOCKER_NOT_FOUND.selector);
+        _programManager.updateUserUnits(WALLET, PROGRAM_0, units, nonce, signature);
+    }
+
+    //     ___         __  __               _ __
+    //    /   | __  __/ /_/ /_  ____  _____(_) /___  __
+    //   / /| |/ / / / __/ __ \/ __ \/ ___/ / __/ / / /
+    //  / ___ / /_/ / /_/ / / / /_/ / /  / / /_/ /_/ /
+    // /_/  |_\__,_/\__/_/ /_/\____/_/  /_/\__/\__, /
+    //                                        /____/
+
+    function testLinkedWalletHasNoAuthority() external {
+        _helperLinkWallet(ALICE, WALLET, WALLET_PKEY);
+        _helperFundLocker(address(aliceLocker), 10_000e18);
+
+        vm.startPrank(WALLET);
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.stake(10_000e18);
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.unstake(1);
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.connect(PROGRAM_0);
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.unlock(10_000e18, 0, WALLET);
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.withdrawDustETH();
+
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.claimAndStake(PROGRAM_0, 1, 1, "");
+
+        vm.stopPrank();
+
+        // The owner is unaffected by the wallet being linked
+        vm.prank(ALICE);
+        aliceLocker.stake(10_000e18);
+
+        assertEq(aliceLocker.getStakedBalance(), 10_000e18, "Staked balance should be 10_000e18");
+    }
+}
+
+/// @dev Minimal mock allowing the FluidLocker constructor to run with zero-addresses
+contract MockStakingRewardController {
+    function lpDistributionPool() external pure returns (address) {
+        return address(0);
+    }
+
+    function taxDistributionPool() external pure returns (address) {
+        return address(0);
+    }
+}
+
 contract FluidLockerLayoutTest is FluidLocker {
     constructor()
         FluidLocker(
             ISuperToken(address(0)),
             IEPProgramManager(address(0)),
-            IStakingRewardController(address(0)),
+            IStakingRewardController(address(new MockStakingRewardController())),
             address(0),
             true,
             INonfungiblePositionManager(address(0)),

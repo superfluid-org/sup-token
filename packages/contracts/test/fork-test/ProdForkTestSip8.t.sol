@@ -241,7 +241,8 @@ contract ProdForkTestSip8 is Test {
             new FluidLockerFactory(
                 address(_lockerBeacon),
                 IStakingRewardController(address(_stakingRewardController)),
-                false // factory is not paused
+                false, // factory is not paused
+                address(0xA6E47) // agent wallet verifier placeholder
             )
         );
         address newFontaineLogicAddress = address(new Fontaine(_sup));

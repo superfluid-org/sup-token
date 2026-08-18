@@ -168,6 +168,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
         vm.assume(_user != address(_stakingRewardController.taxDistributionPool()));
+        vm.assume(_user != address(_stakingRewardController.lpDistributionPool()));
         _units = bound(_units, 1, 1_000_000);
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
@@ -182,6 +183,8 @@ contract EPProgramManagerTest is SFTest {
         for (uint8 i = 0; i < _batchAmount; ++i) {
             programIds[i] = i + 1;
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
+
+            vm.assume(_user != address(pools[i]));
 
             newUnits[i] = _units;
             nonce = _programManagerBase.getNextValidNonce(programIds[i], _user) > nonce

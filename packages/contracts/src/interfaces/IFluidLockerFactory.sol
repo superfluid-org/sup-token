@@ -45,6 +45,9 @@ interface IFluidLockerFactory {
     /// @notice Event emitted upon governor address update
     event GovernorUpdated(address newGovernor);
 
+    /// @notice Event emitted when a SF wallet is linked to a locker
+    event WalletLinked(address indexed wallet, address indexed locker, address indexed lockerOwner);
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -62,6 +65,22 @@ interface IFluidLockerFactory {
 
     /// @notice Error thrown when the attempting to set a locker address with an invalid parameter
     error INVALID_PARAMETER();
+
+    /// @notice Error thrown when attempting to link a wallet without owning a locker
+    error NO_LOCKER_OWNED();
+
+    /// @notice Error thrown when attempting to link a wallet that already owns its own locker
+    error WALLET_OWNS_LOCKER();
+
+    /// @notice Error thrown when the wallet is already linked to a locker
+    error WALLET_ALREADY_LINKED();
+
+    /// @notice Error thrown when the locker already has a linked wallet
+    error LOCKER_ALREADY_LINKED();
+
+    /// @notice Error thrown when a linking signature is invalid
+    /// @param reason Description of what part of the signature was invalid
+    error INVALID_SIGNATURE(string reason);
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -81,6 +100,16 @@ interface IFluidLockerFactory {
      * @return lockerInstance Deployed Locker contract address
      */
     function createLockerContract(address user) external returns (address lockerInstance);
+
+    /**
+     * @notice Permanently links a SF wallet to the caller's locker
+     * @dev The caller must own a locker. The binding is permanent and one-to-one :
+     *      a linked wallet can never own a locker, be unlinked, or be re-linked elsewhere.
+     * @param wallet SF wallet address to be linked to the caller's locker
+     * @param verifierSignature Agent Wallet Verifier signature attesting `wallet` is a genuine SF wallet
+     * @param walletSignature `wallet`'s own signature consenting to the link
+     */
+    function linkWallet(address wallet, bytes calldata verifierSignature, bytes calldata walletSignature) external;
 
     /**
      * @notice Upgrade this proxy logic
@@ -131,4 +160,18 @@ interface IFluidLockerFactory {
      * @return lockerBeaconImpl The locker beacon implementation contract address
      */
     function getLockerBeaconImplementation() external view returns (address lockerBeaconImpl);
+
+    /**
+     * @notice Returns the SF wallet linked to the given locker
+     * @param locker Locker address to be queried
+     * @return wallet The linked SF wallet address (zero-address if none)
+     */
+    function getLinkedWallet(address locker) external view returns (address wallet);
+
+    /**
+     * @notice Returns the locker the given SF wallet is linked to
+     * @param wallet SF wallet address to be queried
+     * @return locker The locker address the wallet is linked to (zero-address if none)
+     */
+    function getLockerByLinkedWallet(address wallet) external view returns (address locker);
 }

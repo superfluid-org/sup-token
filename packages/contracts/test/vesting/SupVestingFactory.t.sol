@@ -90,6 +90,7 @@ contract SupVestingFactoryTest is SFTest {
         uint256 amount,
         uint256 cliffAmount
     ) public {
+        vm.assume(recipient != address(0));
         amount = bound(amount, 1 ether, 1_000_000 ether);
         cliffAmount = bound(cliffAmount, 1, amount - 0.1 ether);
         recipientNbVesting = bound(recipientNbVesting, 2, 10);

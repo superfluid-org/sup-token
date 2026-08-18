@@ -25,8 +25,12 @@ contract DeployFluidLockerFactoyrImplementation is Script {
         console2.log("LOCKER_BEACON_ADDRESS=%s", lockerBeaconAddress);
         console2.log("STAKING_REWARD_CONTROLLER_ADDRESS %s", stakingRewardControllerAddress);
 
-        FluidLockerFactory fluidLockerFactory =
-            new FluidLockerFactory(lockerBeaconAddress, IStakingRewardController(stakingRewardControllerAddress), false);
+        FluidLockerFactory fluidLockerFactory = new FluidLockerFactory(
+            lockerBeaconAddress,
+            IStakingRewardController(stakingRewardControllerAddress),
+            false,
+            vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS")
+        );
         console2.log("FluidLockerFactory implementation deployed at: ", address(fluidLockerFactory));
 
         vm.stopBroadcast();

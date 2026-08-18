@@ -27,7 +27,7 @@ LOCKER_BEACON_ADDRESS=0xf2880c6D68080393C1784f978417a96ab4f37c38 \
 STAKING_REWARD_CONTROLLER_ADDRESS=0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018 \
 SUP_ADDRESS=0xFd62b398DD8a233ad37156690631fb9515059d6A \
 PAUSE_FACTORY_LOCKER_CREATION=false \
-forge script script/upgrades/deploy-sip8.s.sol:DeploySIP8_PART_I --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+forge script script/upgrades/deploy-tte.s.sol:DeployTTE_PART_I --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 
 PART_II :
@@ -36,39 +36,31 @@ PROGRAM_MANAGER_ADDRESS=0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706 \
 STAKING_REWARD_CONTROLLER_ADDRESS=0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018 \
 SUP_ADDRESS=0xFd62b398DD8a233ad37156690631fb9515059d6A \
 FONTAINE_BEACON_ADDRESS=0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE \
-UNLOCK_STATUS=false \
+UNLOCK_STATUS=true \
 NONFUNGIBLE_POSITION_MANAGER_ADDRESS=0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2 \
-ETH_SUP_POOL_ADDRESS=0xCa2054E3E5A940473DD6dCC4a67ECdfdFa8c0b72 \
+ETH_SUP_POOL_ADDRESS=0x46aEd46BabdF0eb941160D32A859E24Df83758f8 \
 SWAP_ROUTER_ADDRESS=0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4 \
-DAO_TREASURY_ADDRESS=0xe7143e87661418DEA122941e01Fdb3f9Acfd02aB \
-forge script script/upgrades/deploy-sip8.s.sol:DeploySIP8_PART_II --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+forge script script/upgrades/deploy-tte.s.sol:DeployTTE_PART_II --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 
 Base Mainnet Deployment Command : 
 
 PART_I :
 
-LOCKER_BEACON_ADDRESS=0x664161f0974F5B17FB1fD3FDcE5D1679E829176c \
-STAKING_REWARD_CONTROLLER_ADDRESS=0xb19Ae25A98d352B36CED60F93db926247535048b \
 SUP_ADDRESS=0xa69f80524381275A7fFdb3AE01c54150644c8792 \
-PAUSE_FACTORY_LOCKER_CREATION=false \
-forge script script/upgrades/deploy-sip8.s.sol:DeploySIP8_PART_I --ffi --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+TAX_DISTRIBUTION_POOL_ADDRESS=0xF0f494f4BD2C3A6bF8b49E6f798875301d944C0A \
+PROGRAM_MANAGER_ADDRESS=0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a \
+STAKING_REWARD_CONTROLLER_ADDRESS=0xb19Ae25A98d352B36CED60F93db926247535048b \
+FONTAINE_BEACON_ADDRESS=0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d \
+UNLOCK_STATUS=false \
+forge script script/upgrades/deploy-locker-impl.s.sol:DeployFluidLockerImplementation --ffi --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 PART_II :
 
-PROGRAM_MANAGER_ADDRESS=0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a \
-STAKING_REWARD_CONTROLLER_ADDRESS=0xb19Ae25A98d352B36CED60F93db926247535048b \
-SUP_ADDRESS=0xa69f80524381275A7fFdb3AE01c54150644c8792 \
-FONTAINE_BEACON_ADDRESS=0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d \
-UNLOCK_STATUS=false \
-NONFUNGIBLE_POSITION_MANAGER_ADDRESS=0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1 \
-ETH_SUP_POOL_ADDRESS=0x0000000000000000000000000000000000000000 \
-SWAP_ROUTER_ADDRESS=0x2626664c2603336E57B271c5C0b26F421741e481 \
-forge script script/upgrades/deploy-sip8.s.sol:DeploySIP8_PART_II --ffi --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 */
 
-contract DeploySIP8 is Script {
+contract DeployTTE is Script {
     function _startBroadcast() internal returns (address deployer) {
         vm.startBroadcast();
 
@@ -92,7 +84,7 @@ contract DeploySIP8 is Script {
     }
 }
 
-contract DeploySIP8_PART_I is DeploySIP8 {
+contract DeployTTE_PART_I is DeployTTE {
     function run() public {
         _showGitRevision();
 
@@ -109,7 +101,10 @@ contract DeploySIP8_PART_I is DeploySIP8 {
 
         address newFluidLockerFactoryLogicAddress = address(
             new FluidLockerFactory(
-                lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), pauseStatus
+                lockerBeaconAddress,
+                IStakingRewardController(stakingRewardControllerProxyAddress),
+                pauseStatus,
+                vm.envAddress("AGENT_WALLET_VERIFIER_ADDRESS")
             )
         );
         address newFontaineLogicAddress = address(new Fontaine(sup));
@@ -117,7 +112,7 @@ contract DeploySIP8_PART_I is DeploySIP8 {
 
         _stopBroadcast();
 
-        console2.log("DEPLOYING SIP-8 PART I - CONTRACTS UPGRADE ..........");
+        console2.log("DEPLOYING SPR V1.1 PART I CONTRACTS UPGRADE ..........");
         console2.log("");
         console2.log("");
         console2.log("*----------------------------------* DEPLOYMENT SETTINGS *---------------------------------*");
@@ -154,7 +149,7 @@ contract DeploySIP8_PART_I is DeploySIP8 {
     }
 }
 
-contract DeploySIP8_PART_II is DeploySIP8 {
+contract DeployTTE_PART_II is DeployTTE {
     function run() public {
         _showGitRevision();
 
@@ -189,7 +184,7 @@ contract DeploySIP8_PART_II is DeploySIP8 {
 
         _stopBroadcast();
 
-        console2.log("DEPLOYING SIP-8 PART II - CONTRACTS UPGRADE ..........");
+        console2.log("DEPLOYING SPR CONTRACTS UPGRADE ..........");
         console2.log("");
         console2.log("");
         console2.log("*----------------------------------* DEPLOYMENT SETTINGS *---------------------------------*");
