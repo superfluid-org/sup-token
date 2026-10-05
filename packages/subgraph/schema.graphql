@@ -335,12 +335,19 @@ type Fontaine @entity(immutable: true) {
   unlockPeriod: BigInt!
 
   """
-  The total amount being unlocked.
+  The gross amount requested before the vest-unlock charge.
   """
   unlockAmount: BigInt!
 
   """
-  The flow rate for the unlock stream.
+  The post-charge amount scheduled to stream to the recipient. This is
+  unlockFlowRate * unlockPeriod and excludes any integer-division remainder
+  left in the Fontaine until termination.
+  """
+  netUnlockAmount: BigInt!
+
+  """
+  The actual flow rate configured on the Fontaine unlock stream.
   """
   unlockFlowRate: BigInt!
 

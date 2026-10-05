@@ -19,6 +19,7 @@ import {
   LiquidityPositionBurned as LiquidityPositionBurnedEvent,
   FluidUnlocked as FluidUnlockedEvent
 } from "../generated/templates/FluidLocker/FluidLocker";
+import { Fontaine as FontaineContract } from "../generated/templates/FluidLocker/Fontaine";
 import { INonfungiblePositionManager } from "../generated/templates/FluidLocker/INonfungiblePositionManager";
 import { IUniswapV3Pool } from "../generated/templates/FluidLocker/IUniswapV3Pool";
 import { getUniV3ETHxSUPPoolAddress, getUniV3PositionManagerAddress } from "./addresses";
@@ -350,9 +351,11 @@ export function handleFluidUnlocked(event: FluidUnlockedEvent): void {
     fontaine.unlockPeriod = event.params.unlockPeriod;
     fontaine.unlockAmount = event.params.availableBalance;
     
-    // Calculate flow rate: unlockAmount / unlockPeriod
-    const flowRate = event.params.availableBalance.div(event.params.unlockPeriod);
-    fontaine.unlockFlowRate = flowRate;
+    // The event amount is gross. Read the actual post-charge flow rate from the Fontaine.
+    const fontaineContract = FontaineContract.bind(event.params.fontaine);
+    const unlockFlowRate = fontaineContract.unlockFlowRate();
+    fontaine.unlockFlowRate = unlockFlowRate;
+    fontaine.netUnlockAmount = unlockFlowRate.times(event.params.unlockPeriod);
     
     // Calculate end date: current timestamp + unlock period
     const endDate = event.block.timestamp.plus(event.params.unlockPeriod);
