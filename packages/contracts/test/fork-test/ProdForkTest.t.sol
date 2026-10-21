@@ -34,6 +34,7 @@ contract ProdForkTest is Test {
 
     uint96 internal constant _SIGNER_PKEY = 69_420;
     address internal constant _DAO_MULTISIG = 0xac808840f02c47C05507f48165d2222FF28EF4e1;
+    address internal constant _SPR_OPS_MULTISIG = 0x2cC02D08ad4541f686254b7048f0cC0c45aB1c55;
     address internal constant _ALICE = address(0x1);
 
     function setUp() public {
@@ -55,16 +56,16 @@ contract ProdForkTest is Test {
         uint32 duration = 90 days;
 
         /// @dev Create the program
-        vm.prank(_DAO_MULTISIG);
+        vm.prank(_SPR_OPS_MULTISIG);
         ISuperfluidPool pool = _programManager.createProgram(
-            programId, _DAO_MULTISIG, vm.addr(_SIGNER_PKEY), _sup, "PROGRAM 1", "PROGRAM_1"
+            programId, _SPR_OPS_MULTISIG, vm.addr(_SIGNER_PKEY), _sup, "PROGRAM 1", "PROGRAM_1"
         );
 
         /// @dev Grant units to Alice
         _helperGrantUnitsToAlice(programId, 1);
 
         /// @dev Approve and set flow permissions
-        vm.startPrank(_DAO_MULTISIG);
+        vm.startPrank(_SPR_OPS_MULTISIG);
         _macroForwarder.runMacro(
             IUserDefinedMacro(address(_programManager)),
             _programManager.paramsGivePermission(programId, fundingAmount, duration)

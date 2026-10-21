@@ -64,6 +64,8 @@ contract SFTest is Test {
     address public constant CAROL = address(0x3);
     address public constant FLUID_TREASURY = address(0x4);
     address[] internal TEST_ACCOUNTS = [ADMIN, FLUID_TREASURY, ALICE, BOB, CAROL];
+    uint256 public constant AGENT_WALLET_VERIFIER_PKEY = 0xA6E47;
+    address public immutable AGENT_WALLET_VERIFIER = vm.addr(AGENT_WALLET_VERIFIER_PKEY);
 
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
@@ -170,7 +172,8 @@ contract SFTest is Test {
             unlockStatus: LOCKER_CAN_UNLOCK,
             swapRouter: _swapRouter,
             nonfungiblePositionManager: _nonfungiblePositionManager,
-            ethSupPool: _pool
+            ethSupPool: _pool,
+            agentWalletVerifier: AGENT_WALLET_VERIFIER
         });
 
         vm.startPrank(ADMIN);
@@ -253,6 +256,25 @@ contract SFTest is Test {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
         signature = abi.encodePacked(r, s, v);
+    }
+
+    function _helperGenerateLinkSignature(uint256 _signerPkey, address _lockerOwner, address _wallet)
+        internal
+        pure
+        returns (bytes memory signature)
+    {
+        bytes32 digest = keccak256(abi.encodePacked(_lockerOwner, _wallet)).toEthSignedMessageHash();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+        signature = abi.encodePacked(r, s, v);
+    }
+
+    function _helperLinkWallet(address owner, address wallet, uint256 walletPkey) internal {
+        bytes memory verifierSignature = _helperGenerateLinkSignature(AGENT_WALLET_VERIFIER_PKEY, owner, wallet);
+        bytes memory walletSignature = _helperGenerateLinkSignature(walletPkey, owner, wallet);
+
+        vm.prank(owner);
+        _fluidLockerFactory.linkWallet(wallet, verifierSignature, walletSignature);
     }
 
     function _helperDistributeToProgramPool(uint256 programId, uint256 amount, uint256 period)
