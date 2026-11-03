@@ -1442,6 +1442,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20_000e18);
 
         uint256 aliceWethBalanceBefore = _ethx.balanceOf(address(ALICE));
+        uint256 aliceEthBalanceBefore = address(ALICE).balance;
         uint256 aliceSupBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
@@ -1451,10 +1452,12 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         aliceLocker.collectFees(positionTokenId);
 
         uint256 aliceWethBalanceAfter = _ethx.balanceOf(address(ALICE));
+        uint256 aliceEthBalanceAfter = address(ALICE).balance;
         uint256 aliceSupBalanceAfter = _fluidSuperToken.balanceOf(address(ALICE));
 
-        assertGt(aliceWethBalanceAfter, aliceWethBalanceBefore, "alice weth balance should increase");
-        assertGt(aliceSupBalanceAfter, aliceSupBalanceBefore, "alice sup balance should increase");
+        assertEq(aliceWethBalanceAfter, aliceWethBalanceBefore, "alice ETHx balance should not increase");
+        assertGt(aliceEthBalanceAfter, aliceEthBalanceBefore, "alice ETH balance should increase");
+        assertGt(aliceSupBalanceAfter, aliceSupBalanceBefore, "alice SUP balance should increase");
     }
 
     function testV2withdrawLiquidity_removeAllLiquidity_beforeTaxFreeWithdrawDelay(uint256 ethAmountToDeposit)
