@@ -398,7 +398,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function connect(uint256 programId) external nonReentrant onlyLockerOwner {
-        _connectToPool(programId);
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        if (!FLUID.isMemberConnected(address(programPool), address(this))) {
+            // Connect this locker to the Program Pool
+            FLUID.connectPool(programPool);
+        }
     }
 
     /// @inheritdoc IFluidLocker
@@ -408,7 +414,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function disconnect(uint256[] memory programIds) external nonReentrant onlyLockerOwner {
-        _disconnectBatch(programIds);
+        for (uint256 i; i < programIds.length; ++i) {
+            _disconnectFromPool(programIds[i]);
+        }
     }
 
     /// @inheritdoc IFluidLocker
@@ -420,7 +428,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         unlockAvailable
         returns (uint256 positionTokenId)
     {
-        ISETH ethx = _getEthx();
+        ISETH ethx =
+            ETH_SUP_POOL.token0() == address(FLUID) ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
 
         uint256 ethAmount = msg.value;
 
@@ -485,7 +494,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Collect the fees
         _collect(tokenId, lockerOwner);
 
-        ISETH ethx = _getEthx();
+        ISETH ethx =
+            ETH_SUP_POOL.token0() == address(FLUID) ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
 
@@ -521,7 +531,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
-        if (_zeroIsSup()) {
+        if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
             (collectedSup, collectedEthx) = _collect(tokenId, lockerOwner);
         } else {
@@ -550,13 +560,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function withdrawDustETH() external onlyLockerOwner {
-        ISETH ethx = _getEthx();
+        address ethx = ETH_SUP_POOL.token0() == address(FLUID) ? ETH_SUP_POOL.token1() : ETH_SUP_POOL.token0();
 
-        uint256 ethxBalance = ethx.balanceOf(address(this));
+        uint256 ethxBalance = ISETH(ethx).balanceOf(address(this));
 
         if (ethxBalance > 0) {
             // Downgrade ETH to ETHx
-            ethx.downgradeToETH(ethxBalance);
+            ISETH(ethx).downgradeToETH(ethxBalance);
         }
 
         uint256 ethBalance = address(this).balance;
@@ -574,7 +584,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 nonce,
         bytes memory stackSignature
     ) external nonReentrant onlyLockerOwner {
-        _disconnectBatch(programIdsToDisconnect);
+        for (uint256 i; i < programIdsToDisconnect.length; ++i) {
+            _disconnectFromPool(programIdsToDisconnect[i]);
+        }
 
         _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
     }
@@ -587,7 +599,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 nonce,
         bytes memory stackSignature
     ) external nonReentrant onlyLockerOwner {
-        _disconnectBatch(programIdsToDisconnect);
+        for (uint256 i; i < programIdsToDisconnect.length; ++i) {
+            _disconnectFromPool(programIdsToDisconnect[i]);
+        }
 
         _claimBatch(programIdsToClaim, totalProgramUnits, nonce, stackSignature);
         _stake(getAvailableBalance());
@@ -616,11 +630,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Calculate the lower and upper price bounds 
         // It is assumed that the liquidity positions are full range
-        (int24 tickLower, int24 tickUpper) = _fullRangeTicks();
-        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
+        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick((TickMath.MIN_TICK / tickSpacing) * tickSpacing);
+        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick((TickMath.MAX_TICK / tickSpacing) * tickSpacing);
 
-        if (_zeroIsSup()) {
+        if (ETH_SUP_POOL.token0() == address(FLUID)) {
             (supAmount, ethxAmount) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96, sqrtPriceLowerX96, sqrtPriceUpperX96, uint128(_liquidityBalance)
             );
@@ -697,20 +711,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
-    function _zeroIsSup() internal view returns (bool zeroIsSup) {
-        zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
-    }
-
-    function _fullRangeTicks() internal view returns (int24 tickLower, int24 tickUpper) {
-        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
-        tickLower = (TickMath.MIN_TICK / tickSpacing) * tickSpacing;
-        tickUpper = (TickMath.MAX_TICK / tickSpacing) * tickSpacing;
-    }
-
-    function _getEthx() internal view returns (ISETH ethx) {
-        ethx = _zeroIsSup() ? ISETH(ETH_SUP_POOL.token1()) : ISETH(ETH_SUP_POOL.token0());
-    }
 
     function _connectToPool(uint256 programId) internal {
         // Get the corresponding program pool
@@ -789,12 +789,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         emit FluidUnstaked(newStakedBalance, amountToUnstake);
-    }
-
-    function _disconnectBatch(uint256[] memory programIds) internal {
-        for (uint256 i; i < programIds.length; ++i) {
-            _disconnectFromPool(programIds[i]);
-        }
     }
 
     function _disconnectFromPool(uint256 programId) internal {
@@ -885,7 +879,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         internal
         returns (uint256 positionTokenId, uint256 depositedEthAmount, uint256 depositedSupAmount)
     {
-        bool zeroIsSup = _zeroIsSup();
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
         INonfungiblePositionManager.MintParams memory mintParams = _formatMintParams(zeroIsSup, ethAmount, supAmount);
 
@@ -927,7 +921,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
     ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
-        bool zeroIsSup = _zeroIsSup();
+        bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
 
@@ -981,14 +975,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
-        (int24 tickLower, int24 tickUpper) = _fullRangeTicks();
+        int24 tickSpacing = ETH_SUP_POOL.tickSpacing();
 
         mintParams = INonfungiblePositionManager.MintParams({
             token0: ETH_SUP_POOL.token0(),
             token1: ETH_SUP_POOL.token1(),
             fee: ETH_SUP_POOL.fee(),
-            tickLower: tickLower,
-            tickUpper: tickUpper,
+            tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
+            tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
             amount0Desired: amount0,
             amount1Desired: amount1,
             amount0Min: amount0Min,
