@@ -41,7 +41,6 @@ UNLOCK_STATUS=true \
 NONFUNGIBLE_POSITION_MANAGER_ADDRESS=0x27F971cb582BF9E50F397e4d29a5C7A34f11faA2 \
 ETH_SUP_POOL_ADDRESS=0x46aEd46BabdF0eb941160D32A859E24Df83758f8 \
 SWAP_ROUTER_ADDRESS=0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4 \
-MERKL_DISTRIBUTOR_ADDRESS=0x0000000000000000000000000000000000000000 \
 forge script script/upgrades/deploy-tte.s.sol:DeployTTE_PART_II --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --account TESTNET_DEPLOYER -vvv --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
 
 
@@ -163,7 +162,6 @@ contract DeployTTE_PART_II is DeployTTE {
         IUniswapV3Pool ethSupPool = IUniswapV3Pool(vm.envAddress("ETH_SUP_POOL_ADDRESS"));
         IV3SwapRouter swapRouter = IV3SwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
         address daoTreasury = vm.envAddress("DAO_TREASURY_ADDRESS");
-        IMerklDistributor merklDistributor = IMerklDistributor(vm.envAddress("MERKL_DISTRIBUTOR_ADDRESS"));
 
         // Start Deployment :
         address deployer = _startBroadcast();
@@ -179,7 +177,7 @@ contract DeployTTE_PART_II is DeployTTE {
                 ethSupPool,
                 swapRouter,
                 daoTreasury,
-                merklDistributor
+                IMerklDistributor(address(0))
             )
         );
 
