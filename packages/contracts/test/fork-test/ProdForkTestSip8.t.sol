@@ -26,6 +26,7 @@ import { Fontaine } from "src/Fontaine.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { IEPProgramManager } from "src/interfaces/IEPProgramManager.sol";
 import { FluidLocker } from "src/FluidLocker.sol";
+import { IMerklDistributor } from "src/interfaces/IMerklDistributor.sol";
 
 /* Uniswap V3 Interfaces */
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
@@ -271,7 +272,8 @@ contract ProdForkTestSip8 is Test {
                 _nonfungiblePositionManager,
                 IUniswapV3Pool(address(0)),
                 _swapRouter,
-                _DAO_MULTISIG
+                _DAO_MULTISIG,
+                IMerklDistributor(address(0))
             )
         );
         vm.stopPrank();

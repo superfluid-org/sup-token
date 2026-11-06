@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import { console2 } from "forge-std/Test.sol";
 
-import { SFTest } from "./SFTest.t.sol";
+import { SFTest, MockMerklDistributor } from "./SFTest.t.sol";
 
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
@@ -19,6 +19,7 @@ import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockA
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
+import { IMerklDistributor } from "../src/interfaces/IMerklDistributor.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
@@ -891,6 +892,114 @@ contract FluidLockerTest is FluidLockerBaseTest {
     }
 }
 
+contract FluidLockerMerklTest is FluidLockerBaseTest {
+    uint256 internal constant _MAX_REWARD = 1_000_000e18;
+
+    function _helperFundMerkl(address locker, uint256 cumulativeAmount, uint256 fundingAmount) internal {
+        _merklDistributor.setReward(locker, address(_fluid), cumulativeAmount);
+        vm.prank(FLUID_TREASURY);
+        _fluid.transfer(address(_merklDistributor), fundingAmount);
+    }
+
+    function _helperClaim(IFluidLocker locker, uint256 cumulativeAmount) internal {
+        address[] memory tokens = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        tokens[0] = address(_fluid);
+        amounts[0] = cumulativeAmount;
+
+        locker.claimMerklRewards(tokens, amounts, new bytes32[][](1));
+    }
+
+    function testClaimMerklRewardsSendsRewardsToOwner(uint256 reward, uint256 locked, uint256 staked) external {
+        reward = bound(reward, 1, _MAX_REWARD);
+        locked = bound(locked, 2e18, _MAX_REWARD);
+        staked = bound(staked, 1e18, locked - 1);
+
+        _helperFundLocker(address(aliceLocker), locked);
+        vm.prank(ALICE);
+        aliceLocker.stake(staked);
+
+        _helperFundMerkl(address(aliceLocker), reward, reward);
+
+        uint256 ownerBalanceBefore = _fluid.balanceOf(ALICE);
+
+        vm.prank(ALICE);
+        _helperClaim(aliceLocker, reward);
+
+        assertEq(_fluid.balanceOf(ALICE), ownerBalanceBefore + reward, "owner should receive the rewards");
+        assertEq(_fluid.balanceOf(address(aliceLocker)), locked, "locker balance should not change");
+        assertEq(aliceLocker.getAvailableBalance(), locked - staked, "available balance should not change");
+        assertEq(aliceLocker.getStakedBalance(), staked, "staked balance should not change");
+    }
+
+    function testClaimMerklRewardsIsCumulative(uint256 firstReward, uint256 secondReward) external {
+        firstReward = bound(firstReward, 1, _MAX_REWARD);
+        secondReward = bound(secondReward, 1, _MAX_REWARD);
+
+        _helperFundMerkl(address(aliceLocker), firstReward, firstReward);
+        uint256 ownerBalanceBefore = _fluid.balanceOf(ALICE);
+
+        vm.prank(ALICE);
+        _helperClaim(aliceLocker, firstReward);
+        assertEq(_fluid.balanceOf(ALICE), ownerBalanceBefore + firstReward, "invalid first claim");
+
+        // Claiming the same cumulative amount twice pays nothing
+        vm.prank(ALICE);
+        _helperClaim(aliceLocker, firstReward);
+        assertEq(_fluid.balanceOf(ALICE), ownerBalanceBefore + firstReward, "second claim should be a no-op");
+
+        uint256 cumulativeReward = firstReward + secondReward;
+        _helperFundMerkl(address(aliceLocker), cumulativeReward, secondReward);
+
+        vm.prank(ALICE);
+        _helperClaim(aliceLocker, cumulativeReward);
+        assertEq(_fluid.balanceOf(ALICE), ownerBalanceBefore + cumulativeReward, "invalid cumulative claim");
+    }
+
+    function testClaimMerklRewardsMultipleTokens(uint256 fluidReward, uint256 ethxReward) external {
+        fluidReward = bound(fluidReward, 1, _MAX_REWARD);
+        ethxReward = bound(ethxReward, 1, 1_000e18);
+
+        _helperFundMerkl(address(aliceLocker), fluidReward, fluidReward);
+        _merklDistributor.setReward(address(aliceLocker), address(_ethx), ethxReward);
+        vm.prank(BOB);
+        _ethx.transfer(address(_merklDistributor), ethxReward);
+
+        address[] memory tokens = new address[](2);
+        uint256[] memory amounts = new uint256[](2);
+        tokens[0] = address(_fluid);
+        tokens[1] = address(_ethx);
+        amounts[0] = fluidReward;
+        amounts[1] = ethxReward;
+
+        uint256 ownerFluidBefore = _fluid.balanceOf(ALICE);
+        uint256 ownerEthxBefore = _ethx.balanceOf(ALICE);
+
+        vm.prank(ALICE);
+        aliceLocker.claimMerklRewards(tokens, amounts, new bytes32[][](2));
+
+        assertEq(_fluid.balanceOf(ALICE), ownerFluidBefore + fluidReward, "invalid FLUID reward");
+        assertEq(_ethx.balanceOf(ALICE), ownerEthxBefore + ethxReward, "invalid ETHx reward");
+        assertEq(_ethx.balanceOf(address(aliceLocker)), 0, "ETHx should not transit through the locker");
+    }
+
+    function testClaimMerklRewardsNotOwner(address caller) external {
+        vm.assume(caller != ALICE);
+
+        _helperFundMerkl(address(aliceLocker), 1e18, 1e18);
+
+        vm.prank(caller);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        _helperClaim(aliceLocker, 1e18);
+    }
+
+    function testClaimMerklRewardsInvalidProof() external {
+        vm.prank(ALICE);
+        vm.expectRevert(MockMerklDistributor.InvalidProof.selector);
+        _helperClaim(aliceLocker, 1e18);
+    }
+}
+
 // Note : this test the transition phase from non-unlockable to unlockable FluidLocker contract instances
 contract FluidLockerTTETest is FluidLockerBaseTest {
     address internal _nonUnlockableLockerLogic;
@@ -910,7 +1019,8 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
                 _nonfungiblePositionManager,
                 _pool,
                 _swapRouter,
-                FLUID_TREASURY
+                FLUID_TREASURY,
+                _merklDistributor
             )
         );
 
@@ -1961,7 +2071,8 @@ contract FluidLockerLayoutTest is FluidLocker {
             INonfungiblePositionManager(address(0)),
             IUniswapV3Pool(address(0)),
             IV3SwapRouter(address(0)),
-            address(0)
+            address(0),
+            IMerklDistributor(address(0))
         )
     { }
 
