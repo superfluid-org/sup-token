@@ -242,6 +242,17 @@ interface IFluidLocker {
     function collectFees(uint256 tokenId) external returns (uint256 collectedEthx, uint256 collectedSup);
 
     /**
+     * @notice Claims the Merkl rewards earned by this Locker
+     * @dev Rewards are transferred directly to the locker owner, they are not locked in this Locker
+     * @dev Only this Locker owner can call this function
+     * @param tokens Addresses of the reward tokens to claim
+     * @param amounts Cumulative amounts earned by this Locker, as returned by the Merkl API
+     * @param proofs Merkle proofs of the claims, as returned by the Merkl API
+     */
+    function claimMerklRewards(address[] memory tokens, uint256[] memory amounts, bytes32[][] memory proofs)
+        external;
+
+    /**
      * @notice Helper function which connects the Locker to a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to

@@ -24,6 +24,9 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
+/* Merkl Interfaces */
+import { IMerklDistributor } from "../src/interfaces/IMerklDistributor.sol";
+
 struct DeploySettings {
     ISuperToken fluid;
     address governor;
@@ -34,6 +37,7 @@ struct DeploySettings {
     IV3SwapRouter swapRouter;
     INonfungiblePositionManager nonfungiblePositionManager;
     IUniswapV3Pool ethSupPool;
+    IMerklDistributor merklDistributor;
 }
 
 function _deployFontaineBeacon(ISuperToken fluid, address governor)
@@ -65,7 +69,8 @@ function _deployLockerBeacon(
             settings.nonfungiblePositionManager,
             settings.ethSupPool,
             settings.swapRouter,
-            settings.treasury
+            settings.treasury,
+            settings.merklDistributor
         )
     );
     UpgradeableBeacon lockerBeacon = new UpgradeableBeacon(lockerLogicAddress);
@@ -206,6 +211,7 @@ contract DeployScript is Script {
         INonfungiblePositionManager nonfungiblePositionManager =
             INonfungiblePositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER_ADDRESS"));
         IUniswapV3Pool ethSupPool = IUniswapV3Pool(vm.envAddress("ETH_SUP_POOL_ADDRESS"));
+        IMerklDistributor merklDistributor = IMerklDistributor(vm.envAddress("MERKL_DISTRIBUTOR_ADDRESS"));
 
         // Purposedly not enforcing this at contract level in case governance decides to forfeit ownership of the contracts
         if (governor == address(0)) {
@@ -221,7 +227,8 @@ contract DeployScript is Script {
             unlockStatus: unlockStatus,
             swapRouter: swapRouter,
             nonfungiblePositionManager: nonfungiblePositionManager,
-            ethSupPool: ethSupPool
+            ethSupPool: ethSupPool,
+            merklDistributor: merklDistributor
         });
 
         _logDeploymentSettings(deployer, address(fluid), governor, treasury, factoryPauseStatus, unlockStatus);

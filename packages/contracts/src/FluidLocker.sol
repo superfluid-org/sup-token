@@ -47,6 +47,7 @@ import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
+import { IMerklDistributor } from "./interfaces/IMerklDistributor.sol";
 
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -161,6 +162,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice DAO Treasury address used to receive the unlocking fee
     address public immutable DAO_TREASURY;
 
+    /// @notice Merkl Distributor interface
+    IMerklDistributor public immutable MERKL_DISTRIBUTOR;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -215,6 +219,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @param nonfungiblePositionManager Nonfungible Position Manager contract interface
      * @param ethSupPool ETH/SUP Uniswap V3 Pool contract interface
      * @param swapRouter Uniswap V3 Swap Router contract interface
+     * @param daoTreasury DAO Treasury address
+     * @param merklDistributor Merkl Distributor contract interface
      */
     constructor(
         ISuperToken fluid,
@@ -225,7 +231,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         INonfungiblePositionManager nonfungiblePositionManager,
         IUniswapV3Pool ethSupPool,
         IV3SwapRouter swapRouter,
-        address daoTreasury
+        address daoTreasury,
+        IMerklDistributor merklDistributor
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -245,6 +252,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
         ETH_SUP_POOL = ethSupPool;
         DAO_TREASURY = daoTreasury;
+        MERKL_DISTRIBUTOR = merklDistributor;
     }
 
     /**
@@ -530,6 +538,24 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             // Collect the fees
             (collectedEthx, collectedSup) = _collect(tokenId, lockerOwner);
         }
+    }
+
+    /// @inheritdoc IFluidLocker
+    function claimMerklRewards(address[] memory tokens, uint256[] memory amounts, bytes32[][] memory proofs)
+        external
+        nonReentrant
+        onlyLockerOwner
+    {
+        address[] memory users = new address[](tokens.length);
+        address[] memory recipients = new address[](tokens.length);
+
+        for (uint256 i; i < tokens.length; ++i) {
+            users[i] = address(this);
+            recipients[i] = lockerOwner;
+        }
+
+        // Rewards are sent directly to the locker owner, they never transit through this locker
+        MERKL_DISTRIBUTOR.claimWithRecipient(users, tokens, amounts, proofs, recipients, new bytes[](tokens.length));
     }
 
     /// @inheritdoc IFluidLocker
