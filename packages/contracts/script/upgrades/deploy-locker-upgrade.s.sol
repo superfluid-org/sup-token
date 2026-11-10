@@ -73,6 +73,9 @@ contract DeployLockerUpgrade is SupDeployer {
         // Validate the deployment parameters - will revert in case of inexplicit parameter change
         _validateDeploymentParameters(currentLockerImplementation, lockerParams);
 
+        // Validate the parameters explicitly marked as updated - will revert if they point to an invalid address
+        _validateUpdatedParameters(lockerParams);
+
         // Start Deployment
         address deployer = _startBroadcast();
 
@@ -94,6 +97,9 @@ contract DeployLockerUpgrade is SupDeployer {
                 IMerklDistributor(lockerParams.merklDistributor)
             )
         );
+
+        // Validate the new implementation - will revert if it does not match the deployment parameters
+        _validateNewImplementation(FluidLocker(payable(newFluidLockerImplementation)), lockerParams);
 
         // Log deployment results
         _logDeploymentResults(newFluidLockerImplementation);
@@ -199,6 +205,87 @@ contract DeployLockerUpgrade is SupDeployer {
                 liveMerklDistributor == lockerParams.merklDistributor, "MerklDistributor is not meant to be updated"
             );
         }
+    }
+
+    /**
+     * @notice Validates the parameters explicitly marked as updated
+     * @dev These parameters skip the comparison with the live implementation, so they are checked to point to
+     *      deployed contracts instead (or to be non-zero for the DAO Treasury, which may not be a contract)
+     * @param lockerParams The deployment parameters
+     */
+    function _validateUpdatedParameters(AddressRegistry.LockerDeploymentParameters memory lockerParams) internal view {
+        _requireContractIfUpdated("UPDATE_SUP", lockerParams.sup);
+        _requireContractIfUpdated("UPDATE_PROGRAM_MANAGER", lockerParams.programManager);
+        _requireContractIfUpdated("UPDATE_STAKING_REWARD_CONTROLLER", lockerParams.stakingRewardController);
+        _requireContractIfUpdated("UPDATE_FONTAINE_BEACON", lockerParams.fontaineBeacon);
+        _requireContractIfUpdated("UPDATE_NONFUNGIBLE_POSITION_MANAGER", lockerParams.uniswapNonFungiblePositionManager);
+        _requireContractIfUpdated("UPDATE_ETH_SUP_POOL", lockerParams.uniswapSupEthxPool);
+        _requireContractIfUpdated("UPDATE_SWAP_ROUTER", lockerParams.uniswapSwapRouter);
+        _requireContractIfUpdated("UPDATE_MERKL_DISTRIBUTOR", lockerParams.merklDistributor);
+
+        if (!_shouldCheckParam("UPDATE_DAO_TREASURY")) {
+            require(lockerParams.daoTreasury != address(0), "UPDATE_DAO_TREASURY : address is zero");
+        }
+    }
+
+    /**
+     * @notice Reverts if the given parameter is marked as updated and does not point to a deployed contract
+     * @param paramName the env var corresponding to a parameter change
+     * @param param the new parameter value
+     */
+    function _requireContractIfUpdated(string memory paramName, address param) internal view {
+        if (!_shouldCheckParam(paramName)) {
+            require(param.code.length > 0, string.concat(paramName, " : address is not a contract"));
+        }
+    }
+
+    /**
+     * @notice Validates that the newly deployed implementation matches the deployment parameters
+     * @dev Also enforces the EIP-170 contract size limit : Forge reports oversized contracts during simulation
+     *      but still completes it, which makes the error easy to miss
+     * @param newLockerImpl The newly deployed FluidLocker implementation
+     * @param lockerParams The deployment parameters
+     */
+    function _validateNewImplementation(
+        FluidLocker newLockerImpl,
+        AddressRegistry.LockerDeploymentParameters memory lockerParams
+    ) internal view {
+        require(address(newLockerImpl).code.length <= 24_576, "New implementation exceeds the EIP-170 size limit");
+
+        require(address(newLockerImpl.FLUID()) == lockerParams.sup, "New implementation : invalid SUP");
+        require(
+            address(newLockerImpl.EP_PROGRAM_MANAGER()) == lockerParams.programManager,
+            "New implementation : invalid ProgramManager"
+        );
+        require(
+            address(newLockerImpl.STAKING_REWARD_CONTROLLER()) == lockerParams.stakingRewardController,
+            "New implementation : invalid StakingRewardController"
+        );
+        require(
+            address(newLockerImpl.FONTAINE_BEACON()) == lockerParams.fontaineBeacon,
+            "New implementation : invalid FontaineBeacon"
+        );
+        require(
+            newLockerImpl.UNLOCK_AVAILABLE() == lockerParams.isUnlockAvailable,
+            "New implementation : invalid UnlockAvailable"
+        );
+        require(
+            address(newLockerImpl.NONFUNGIBLE_POSITION_MANAGER()) == lockerParams.uniswapNonFungiblePositionManager,
+            "New implementation : invalid NonfungiblePositionManager"
+        );
+        require(
+            address(newLockerImpl.ETH_SUP_POOL()) == lockerParams.uniswapSupEthxPool,
+            "New implementation : invalid EthSupPool"
+        );
+        require(
+            address(newLockerImpl.SWAP_ROUTER()) == lockerParams.uniswapSwapRouter,
+            "New implementation : invalid SwapRouter"
+        );
+        require(newLockerImpl.DAO_TREASURY() == lockerParams.daoTreasury, "New implementation : invalid DaoTreasury");
+        require(
+            address(newLockerImpl.MERKL_DISTRIBUTOR()) == lockerParams.merklDistributor,
+            "New implementation : invalid MerklDistributor"
+        );
     }
 
     /**
