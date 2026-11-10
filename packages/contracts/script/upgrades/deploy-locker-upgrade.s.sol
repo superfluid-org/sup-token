@@ -12,6 +12,7 @@ import { IEPProgramManager } from "src/interfaces/IEPProgramManager.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
+import { IMerklDistributor } from "src/interfaces/IMerklDistributor.sol";
 
 /**
  * @title DeployLockerUpgrade
@@ -34,6 +35,7 @@ import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfac
  *         - UPDATE_ETH_SUP_POOL=true
  *         - UPDATE_SWAP_ROUTER=true
  *         - UPDATE_DAO_TREASURY=true
+ *         - UPDATE_MERKL_DISTRIBUTOR=true
  *
  *      3. Run the deployment script (see command below)
  *
@@ -42,6 +44,8 @@ import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfac
  *      The script compares each parameter in `AddressRegistry` against the current live implementation.
  *      If a parameter differs and the corresponding env var is NOT set, the script reverts.
  *      This ensures that parameter changes are always intentional and explicitly acknowledged.
+ *      A parameter that does not exist in the live implementation yet (e.g. `MERKL_DISTRIBUTOR`) is a change,
+ *      so its env var must be set.
  *
  *      == Example ==
  *
@@ -86,7 +90,8 @@ contract DeployLockerUpgrade is SupDeployer {
                 INonfungiblePositionManager(lockerParams.uniswapNonFungiblePositionManager),
                 IUniswapV3Pool(lockerParams.uniswapSupEthxPool),
                 IV3SwapRouter(lockerParams.uniswapSwapRouter),
-                lockerParams.daoTreasury
+                lockerParams.daoTreasury,
+                IMerklDistributor(lockerParams.merklDistributor)
             )
         );
 
@@ -121,6 +126,7 @@ contract DeployLockerUpgrade is SupDeployer {
      *      - UPDATE_ETH_SUP_POOL: Skip ETH/SUP Uniswap V3 Pool address validation
      *      - UPDATE_SWAP_ROUTER: Skip Uniswap V3 Swap Router address validation
      *      - UPDATE_DAO_TREASURY: Skip DAO Treasury address validation
+     *      - UPDATE_MERKL_DISTRIBUTOR: Skip Merkl Distributor address validation
      *
      * @param lockerImpl The current FluidLocker implementation to validate against
      * @param lockerParams The address lockerParams containing the new deployment parameters
@@ -185,6 +191,36 @@ contract DeployLockerUpgrade is SupDeployer {
         if (_shouldCheckParam("UPDATE_DAO_TREASURY")) {
             require(lockerImpl.DAO_TREASURY() == lockerParams.daoTreasury, "DaoTreasury is not meant to be updated");
         }
+
+        if (_shouldCheckParam("UPDATE_MERKL_DISTRIBUTOR")) {
+            (bool exists, address liveMerklDistributor) = _getLiveMerklDistributor(lockerImpl);
+            require(exists, "MerklDistributor is new to this implementation, set UPDATE_MERKL_DISTRIBUTOR=true");
+            require(
+                liveMerklDistributor == lockerParams.merklDistributor, "MerklDistributor is not meant to be updated"
+            );
+        }
+    }
+
+    /**
+     * @notice Reads the Merkl Distributor of an implementation that may predate this immutable
+     * @dev A plain call cannot be used : `FluidLocker` has a catch-all `fallback`, so calling a missing getter
+     *      succeeds with empty return data (and decoding it reverts outside of any try/catch)
+     * @param lockerImpl The FluidLocker implementation to read from
+     * @return exists True if the implementation has the `MERKL_DISTRIBUTOR` getter
+     * @return merklDistributor The Merkl Distributor address (zero if the getter does not exist)
+     */
+    function _getLiveMerklDistributor(FluidLocker lockerImpl)
+        internal
+        view
+        returns (bool exists, address merklDistributor)
+    {
+        (bool success, bytes memory data) =
+            address(lockerImpl).staticcall(abi.encodeWithSignature("MERKL_DISTRIBUTOR()"));
+
+        if (success && data.length == 32) {
+            exists = true;
+            merklDistributor = abi.decode(data, (address));
+        }
     }
 
     function _logDeploymentParameters(address deployer, AddressRegistry.LockerDeploymentParameters memory lockerParams)
@@ -206,6 +242,7 @@ contract DeployLockerUpgrade is SupDeployer {
         console2.log("| NONFUNGIBLE_POSITION_MANAGER_ADDRESS    : %s", lockerParams.uniswapNonFungiblePositionManager);
         console2.log("| ETH_SUP_POOL_ADDRESS                    : %s", lockerParams.uniswapSupEthxPool);
         console2.log("| SWAP_ROUTER_ADDRESS                     : %s", lockerParams.uniswapSwapRouter);
+        console2.log("| MERKL_DISTRIBUTOR_ADDRESS               : %s", lockerParams.merklDistributor);
         console2.log("|                                                                                    ");
         console2.log("*------------------------------------------------------------------------------------------*");
     }

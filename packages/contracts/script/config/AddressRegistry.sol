@@ -34,6 +34,7 @@ library AddressRegistry {
         address uniswapSupEthxPool;
         address uniswapSwapRouter;
         address daoTreasury;
+        address merklDistributor;
         bool isUnlockAvailable;
     }
 
@@ -121,6 +122,7 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xBa154BEAa14172fF9384B82499732c669527d85D,
             uniswapSwapRouter: 0x2626664c2603336E57B271c5C0b26F421741e481,
             daoTreasury: 0xac808840f02c47C05507f48165d2222FF28EF4e1,
+            merklDistributor: 0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae,
             isUnlockAvailable: true
         });
     }
@@ -197,6 +199,7 @@ library AddressRegistry {
             uniswapSupEthxPool: 0xCa2054E3E5A940473DD6dCC4a67ECdfdFa8c0b72,
             uniswapSwapRouter: 0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4,
             daoTreasury: 0xe7143e87661418DEA122941e01Fdb3f9Acfd02aB,
+            merklDistributor: address(0), // Merkl claims are not supported on Base Sepolia
             isUnlockAvailable: true
         });
     }
