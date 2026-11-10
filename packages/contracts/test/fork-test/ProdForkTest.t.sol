@@ -33,7 +33,7 @@ contract ProdForkTest is Test {
     MacroForwarder internal _macroForwarder;
 
     uint96 internal constant _SIGNER_PKEY = 69_420;
-    address internal constant _DAO_MULTISIG = 0xac808840f02c47C05507f48165d2222FF28EF4e1;
+    address internal constant _DAO_MULTISIG = 0x2cC02D08ad4541f686254b7048f0cC0c45aB1c55;
     address internal constant _ALICE = address(0x1);
 
     function setUp() public {
