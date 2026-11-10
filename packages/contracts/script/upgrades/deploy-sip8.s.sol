@@ -13,6 +13,7 @@ import {
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
+import { IMerklDistributor } from "src/interfaces/IMerklDistributor.sol";
 
 import { FluidLocker } from "src/FluidLocker.sol";
 import { FluidLockerFactory } from "src/FluidLockerFactory.sol";
@@ -183,7 +184,8 @@ contract DeploySIP8_PART_II is DeploySIP8 {
                 nonfungiblePositionManager,
                 ethSupPool,
                 swapRouter,
-                daoTreasury
+                daoTreasury,
+                IMerklDistributor(address(0))
             )
         );
 

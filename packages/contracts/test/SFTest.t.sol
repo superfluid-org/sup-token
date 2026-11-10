@@ -23,6 +23,8 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController } from "../src/StakingRewardController.sol";
 
+import { IMerklDistributor } from "../src/interfaces/IMerklDistributor.sol";
+
 import { _deployAll, DeploySettings, DeployedContracts } from "../script/Deploy.s.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -34,6 +36,39 @@ using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
 using SafeCast for int256;
+
+/// @dev Mimics the access control, cumulative accounting and recipient handling of the Merkl Distributor
+contract MockMerklDistributor is IMerklDistributor {
+    error NotWhitelisted();
+    error InvalidProof();
+
+    mapping(bytes32 leaf => bool isValid) public validLeaves;
+    mapping(address user => mapping(address token => uint256 amount)) public claimed;
+
+    function setReward(address user, address token, uint256 amount) external {
+        validLeaves[keccak256(abi.encode(user, token, amount))] = true;
+    }
+
+    function claimWithRecipient(
+        address[] calldata users,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes32[][] calldata,
+        address[] calldata recipients,
+        bytes[] memory datas
+    ) external {
+        for (uint256 i; i < users.length; ++i) {
+            if (msg.sender != users[i]) revert NotWhitelisted();
+            if (!validLeaves[keccak256(abi.encode(users[i], tokens[i], amounts[i]))]) revert InvalidProof();
+            require(datas[i].length == 0, "unexpected callback");
+
+            uint256 toSend = amounts[i] - claimed[users[i]][tokens[i]];
+            claimed[users[i]][tokens[i]] = amounts[i];
+
+            ISuperToken(tokens[i]).transfer(recipients[i], toSend);
+        }
+    }
+}
 
 contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
@@ -83,6 +118,9 @@ contract SFTest is Test {
     IV3SwapRouter internal _swapRouter;
     IUniswapV3Factory internal _poolFactory;
     IUniswapV3Pool internal _pool;
+
+    // Merkl Configuration
+    MockMerklDistributor internal _merklDistributor;
 
     function setUp() public virtual {
         vm.createSelectFork(vm.envString("BASE_MAINNET_RPC_URL"), 36486000);
@@ -160,6 +198,8 @@ contract SFTest is Test {
         _nonfungiblePositionManager.mint(mintParams);
         vm.stopPrank();
 
+        _merklDistributor = new MockMerklDistributor();
+
         // FLUID Contracts Deployment Start
         DeploySettings memory settings = DeploySettings({
             fluid: _fluidSuperToken,
@@ -170,7 +210,8 @@ contract SFTest is Test {
             unlockStatus: LOCKER_CAN_UNLOCK,
             swapRouter: _swapRouter,
             nonfungiblePositionManager: _nonfungiblePositionManager,
-            ethSupPool: _pool
+            ethSupPool: _pool,
+            merklDistributor: _merklDistributor
         });
 
         vm.startPrank(ADMIN);
