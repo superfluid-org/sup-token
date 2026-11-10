@@ -6,6 +6,7 @@
     "avoid-sha3": "warn",
     "compiler-version": ["error", "^0.8.23"],
     "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "import-path-check": "off"
+    "import-path-check": "off",
+    "no-console": ["off", { "excludedFiles": ["script/**"] }]
   }
 }
